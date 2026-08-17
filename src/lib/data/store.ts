@@ -90,11 +90,16 @@ export interface TourStore {
   subscribe(onChange: (snapshot: TourSnapshot) => void): () => void;
   /** The hot path. Must be fast and safe to call optimistically. */
   setScore(input: SetScoreInput): Promise<void>;
-  /**
-   * Save a round's 4-balls. Open to any signed-in player, not just admins.
-   * Replaces the whole set for that round.
-   */
+  /** Save a round's 4-balls, replacing the whole set for that round. */
   saveGroups(input: SaveGroupsInput): Promise<void>;
+  /**
+   * Save who is playing whom: the players on each side of a match.
+   *
+   * Narrower than `update('sides', ...)` on purpose — it only ever touches
+   * `playerIds`, so the screen that everyone can reach cannot change a format,
+   * a hole range or a points value.
+   */
+  saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void>;
   /** Admin edits. */
   update<K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]): Promise<void>;
   /** Insert a new row (itinerary items, fines, matches, sides). */

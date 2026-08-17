@@ -6,18 +6,16 @@ import { useTour } from '@/lib/data/provider';
 import { AppShell } from './AppShell';
 
 /**
- * The private-tour front door.
+ * The front door.
  *
- * When a PIN is configured, nobody sees a single score until they type it.
- * After that they pick their name so score entries are attributed to a person
- * rather than "someone's phone". In demo mode the PIN step is skipped — there
- * is nothing on a server to protect.
+ * No PIN: anyone with the link is in. All this asks is who you are, so scores
+ * and changes to the 4-balls carry a name rather than "someone's phone", and
+ * so "Start scoring" can open your card rather than making you find it.
  */
 export function Gate({ children }: { children: React.ReactNode }) {
-  const { session, pinRequired, loading, signIn } = useSession();
+  const { session, loading, signIn } = useSession();
   const { snapshot, status, setScorerName } = useTour();
 
-  const [pin, setPin] = useState('');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,11 +42,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const chosen = players.find((p) => p.id === playerId);
-      await signIn({
-        pin: pin.trim(),
-        playerId,
-        playerName: chosen?.name ?? 'Guest',
-      });
+      await signIn({ playerId, playerName: chosen?.name ?? 'Guest' });
       if (chosen) setScorerName(chosen.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign in');
@@ -75,27 +69,6 @@ export function Gate({ children }: { children: React.ReactNode }) {
       </div>
 
       <form onSubmit={submit} className="card-raised mt-8 space-y-5 p-5">
-        {pinRequired && (
-          <div>
-            <label htmlFor="pin" className="label mb-2 block">
-              Tour PIN
-            </label>
-            <input
-              id="pin"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="field text-center text-2xl tracking-[0.4em]"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="••••"
-              required
-            />
-            <p className="mt-2 text-xs text-chalk-500">
-              Captains: use the admin PIN instead to unlock editing.
-            </p>
-          </div>
-        )}
-
         <div>
           <span className="label mb-2 block">Who are you?</span>
           <div className="grid grid-cols-2 gap-2">
@@ -123,7 +96,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
             })}
           </div>
           <p className="mt-2 text-xs text-chalk-500">
-            Optional, but it means scores show who entered them.
+            Pick yourself so scores and 4-ball changes show who made them.
           </p>
         </div>
 
@@ -132,14 +105,12 @@ export function Gate({ children }: { children: React.ReactNode }) {
         )}
 
         <button type="submit" className="btn-primary w-full text-base" disabled={busy || status === 'loading'}>
-          {busy ? 'Checking…' : 'Enter the tour'}
+          {busy ? 'One moment…' : 'Enter the tour'}
         </button>
 
-        {!pinRequired && (
-          <p className="text-center text-xs text-chalk-500">
-            Running in demo mode on this device. No PIN needed.
-          </p>
-        )}
+        <p className="text-center text-xs text-chalk-500">
+          No PIN needed — this tour is private because the link is.
+        </p>
       </form>
     </div>
   );

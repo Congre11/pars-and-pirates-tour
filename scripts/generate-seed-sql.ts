@@ -21,7 +21,13 @@ function q(value: unknown): string {
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (Array.isArray(value)) {
-    return `array[${value.map((v) => q(v)).join(', ')}]::uuid[]`;
+    // Player id arrays are uuid[]; name arrays (a course's nines) are text[].
+    // Casting by content keeps both correct without a per-column table.
+    const isUuid = (v: unknown) =>
+      typeof v === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const cast = value.length > 0 && value.every(isUuid) ? 'uuid[]' : 'text[]';
+    return `array[${value.map((v) => q(v)).join(', ')}]::${cast}`;
   }
   if (typeof value === 'object') {
     return `${q(JSON.stringify(value))}::jsonb`;
@@ -142,6 +148,8 @@ parts.push(
       location: course.location,
       source_url: course.sourceUrl,
       notes: course.notes,
+      routing: course.routing,
+      nine_names: course.nineNames,
       data_verified: course.dataVerified,
       verified_at: course.verifiedAt,
       verified_by: course.verifiedBy,

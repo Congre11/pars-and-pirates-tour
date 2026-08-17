@@ -13,6 +13,8 @@ const ALLOWANCE_HELP: Record<MatchFormat, string> = {
   singles: 'Applied to each player individually. WHS singles match play is 100%.',
   two_man_scramble:
     'Applied to the two course handicaps, lowest first. The common setting is 35 / 15%.',
+  shamble:
+    'Applied to each player individually, as in better ball, because each plays their own ball in from the chosen drive. 90% to start; lower it if the shared drive makes it too easy.',
   foursomes: 'Applied to both course handicaps. WHS foursomes is 50% of the combined total.',
 };
 
@@ -60,7 +62,7 @@ export default function AdminRulesPage() {
         </div>
         <p className="text-xs leading-snug text-chalk-500">
           These are the defaults for new matches and the ratio used when a match is halved.
-          Individual matches can be worth more or less — set that per match in Admin → Formats
+          Individual matches can be worth more or less — set that per match in Tour settings → Formats
           &amp; pairings.
         </p>
       </div>
@@ -89,7 +91,7 @@ export default function AdminRulesPage() {
           <ToggleField
             label="Lock completed holes"
             value={settings.lockCompletedHoles}
-            hint="Once the match has moved past a hole, only captains can change it. Stops accidental taps rewriting history."
+            hint="Once the match has moved past a hole it is closed. Anyone can still reopen it from the match screen — this just stops a pocket tap rewriting history."
             onSave={(value) => patch({ lockCompletedHoles: value })}
           />
         </div>

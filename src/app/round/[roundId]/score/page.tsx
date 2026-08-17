@@ -169,9 +169,10 @@ export default function RoundScorePage({ params }: { params: Promise<{ roundId: 
   const playerTeam = player ? teamById(player.teamId) : undefined;
   const segmented = lane.length > 1;
 
+  // A guard against stray taps, not a permission — the match screen has an
+  // explicit "correct this hole" action open to everyone.
   const locked =
     snapshot.tour.settings.lockCompletedHoles &&
-    !session?.isAdmin &&
     activeOutcome != null &&
     activeHoleDetail?.complete === true &&
     activeHole <

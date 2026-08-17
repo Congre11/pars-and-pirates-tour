@@ -97,7 +97,7 @@ export default function AdminRoundsPage() {
               />
 
               <p className="text-xs text-chalk-500">
-                {matchesForRound(round.id).length} matches on this round. Edit them in Admin →
+                {matchesForRound(round.id).length} matches on this round. Edit them in Tour settings →
                 Pairings.
               </p>
             </Accordion>

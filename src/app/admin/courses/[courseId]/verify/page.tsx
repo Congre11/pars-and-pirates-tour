@@ -383,7 +383,7 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
       </div>
       <p className="text-xs text-chalk-500">
         Everything below applies to the {activeTee?.name ?? 'selected'} tee. Change the round’s tee
-        in Admin → Rounds.
+        in Tour settings → Rounds.
       </p>
 
       {/* --- Photo ------------------------------------------------------------ */}

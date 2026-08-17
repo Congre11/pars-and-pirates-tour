@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { hasStrongSessionSecret, isPinRequired } from '@/lib/auth/session';
+import { hasStrongSessionSecret } from '@/lib/auth/session';
 import { isServerSupabaseConfigured } from '@/lib/supabase/admin';
 import { hnaStatus } from '@/lib/hna/adapter';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
@@ -44,28 +44,13 @@ export async function GET() {
           : 'Off. In demo mode scores stay on this device only.',
     },
     {
-      key: 'pin',
-      label: 'Tour PIN',
-      ok: Boolean(process.env.TOUR_PIN),
-      detail: process.env.TOUR_PIN
-        ? 'Set. Everyone types this once to get in.'
-        : 'Not set. Anyone with the link can open the app.',
-    },
-    {
-      key: 'admin_pin',
-      label: 'Admin PIN (captains only)',
-      ok: Boolean(process.env.ADMIN_PIN),
-      detail: process.env.ADMIN_PIN
-        ? 'Set. Only people with this PIN can edit handicaps, pairings and correct scores.'
-        : 'Not set. Admin screens are open to anyone who is signed in.',
-    },
-    {
       key: 'session_secret',
-      label: 'Login security key',
+      label: 'Name-cookie signing key',
       ok: hasStrongSessionSecret(),
       detail: hasStrongSessionSecret()
-        ? 'Set. Sign-ins are signed properly.'
-        : 'Not set. Add SESSION_SECRET (a long random string) before the tour.',
+        ? 'Set. The cookie holding your name is signed, so a change always shows who really made it.'
+        : 'Optional. SESSION_SECRET signs the cookie that remembers your name. Nothing is gated on it — there are no PINs.',
+      optional: true,
     },
     {
       key: 'scorecard_reader',
@@ -87,7 +72,6 @@ export async function GET() {
 
   return NextResponse.json({
     mode: clientConfigured ? 'supabase' : 'demo',
-    pinRequired: isPinRequired(),
     checks,
   });
 }

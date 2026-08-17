@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -11,13 +10,12 @@ export const dynamic = 'force-dynamic';
  * Used to clear a practice run before the real thing. The audit trail in
  * `score_events` is deliberately NOT cleared, so there is still a record of
  * what happened.
+ *
+ * There is no PIN on this — there are no PINs anywhere any more. What keeps it
+ * safe is that it lives on the Tour settings screen behind a typed
+ * confirmation, well away from anything used on the course.
  */
 export async function POST() {
-  const session = await getSession();
-  if (isPinRequired() && !session?.isAdmin) {
-    return NextResponse.json({ error: 'Admin PIN required.' }, { status: 403 });
-  }
-
   const supabase = getServiceSupabase();
   if (!supabase) {
     return NextResponse.json({ error: 'The database is not configured.' }, { status: 503 });

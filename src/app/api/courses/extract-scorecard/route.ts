@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getSession, isPinRequired } from '@/lib/auth/session';
 import {
   EXTRACTION_PROMPT,
   SCORECARD_SCHEMA,
@@ -35,11 +34,6 @@ export async function GET() {
  * are separate, explicit actions.
  */
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (isPinRequired() && !session?.isAdmin) {
-    return NextResponse.json({ error: 'Admin PIN required.' }, { status: 403 });
-  }
-
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

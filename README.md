@@ -28,10 +28,11 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (123 tests) | `src/lib/**/*.test.ts` |
+| Test suite (139 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
+| Matchup sections + validation | `src/lib/rounds/matchups.ts` |
 | Seeded tour (players, days, courses, itinerary) | `src/lib/seed/` |
 | Generated SQL seed | `supabase/seed.sql` (`npm run seed:sql`) |
 | Storage layer + realtime + offline queue | `src/lib/data/` |
@@ -44,7 +45,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 123 tests: scoring, points, formats, 4-balls, extraction
+npm test           # 139 tests: scoring, points, formats, 4-balls, matchups
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -62,18 +63,20 @@ grouped by day with live status.
 **Scorecard** — the core screen. "Start Scoring" on any round opens that
 round's linked course card directly; nobody picks a course. Where a round is
 configured with several formats the card switches as you walk — Day 3 ships as
-H1–6 singles → H7–12 scramble → H13–18 alternate shot off one PGA Sultan card,
+H1–6 scramble → H7–12 shamble → H13–18 better ball off one PGA Sultan card,
 read from the match rows rather than hard-coded. Hole strip, one-tap score
 entry, strokes received, net scores, hole winners, running match status and the
 full card.
-**Round / Course** — the day's matches plus the full 18-hole card per tee.
-**4-balls** — who walks round with whom. Editable by every player, no admin PIN.
+**Round / Course** — the day's matches plus the full 18-hole card per tee, with
+**Edit 4-balls** and a per-section **Edit matchups** on every round.
+**4-balls** — who walks round with whom. Editable by every player.
+**Matchups** — who plays whom, edited per hole range. Editable by every player.
 **Itinerary** — all eight days; golf days link into that day's scorecards.
 **Formats** — plain-English rules and the exact handicap allowance in force.
 **Teams** — rosters, handicaps, points contributed, leading scorer.
-**Admin** — players, handicaps, courses, tee times, formats & pairings, rules,
-itinerary, score corrections, and the course verification flow below. Protected
-by the admin PIN.
+**Tour settings** — players, handicaps, courses, tee times, formats & pairings,
+rules, itinerary and the course verification flow below. Set up once before the
+tour; nothing here is needed to play.
 **Fines** — the running tab.
 
 ---
@@ -84,23 +87,23 @@ by the admin PIN.
 
 | Day | Date | Course | Holes | Format | Matches | Per match | Day total |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 29 Aug | Faldo Course | 1–18 | 4-Man Team Scramble | 1 | 2 | **2** |
+| 1 | 29 Aug | Faldo — Queen’s + Prince’s | 1–18 | 4-Man Team Scramble | 1 | 2 | **2** |
 | 2 | 30 Aug | Carya Golf Club | 1–18 | Better Ball Match Play | 2 | 1 | **2** |
-| 3 | 1 Sep | PGA Sultan | 1–6 | Singles | 4 | 0.25 | 1 |
-| 3 | 1 Sep | PGA Sultan | 7–12 | 2-Man Scramble | 2 | 0.5 | 1 |
-| 3 | 1 Sep | PGA Sultan | 13–18 | Alternate Shot | 2 | 0.5 | 1 |
+| 3 | 1 Sep | PGA Sultan | 1–6 | 2-Man Scramble | 2 | 0.5 | 1 |
+| 3 | 1 Sep | PGA Sultan | 7–12 | Shamble | 2 | 0.5 | 1 |
+| 3 | 1 Sep | PGA Sultan | 13–18 | Better Ball | 2 | 0.5 | 1 |
 | 4 | 2 Sep | Montgomerie Maxx Royal | 1–18 | Singles Match Play | 4 | 1 | **4** |
 
 **11 points total; 6 wins the tour.** A halved match splits its value exactly —
-a 0.25-point singles match halved is 0.125 each. `src/lib/seed/seed.test.ts`
+a 0.5-point match halved is 0.25 each. `src/lib/seed/seed.test.ts`
 locks the seeded structure so a stray edit to the seed fails the build rather
 than the scoreboard.
 
 **This table is the seeded default, not a fixture.** Day 3's three-format shape
-is eight ordinary match rows, exactly like every other day. In
-**Admin → Formats & pairings** you can change any match's format, first and last
-hole, matchup, points value and handicap allowance, and add or delete matches
-entirely. The live scorecard and the scoring engine read the same rows, so a
+is six ordinary match rows, exactly like every other day. In
+**Tour settings → Formats & pairings** you can change any match's format, first
+and last hole, points value and handicap allowance, and add or delete matches
+entirely; **who plays whom** is edited on the round itself by anyone. The live scorecard and the scoring engine read the same rows, so a
 change lands on every phone in seconds without a code change or a deploy. See
 [Reconfiguring a round](#reconfiguring-a-round) below.
 
@@ -113,8 +116,8 @@ Match strokes    = the difference, so the lower side plays off scratch
 Strokes per hole = allocated by stroke index, wrapping above 18
 ```
 
-Handicap indexes are supplied by the organiser and entered by hand (Admin →
-Players records who changed them and when):
+Handicap indexes are supplied by the organiser and entered by hand (Tour
+settings → Players records who changed them and when):
 
 | The Pars | Index | | Pin High Pirates | Index |
 | --- | --- | --- | --- | --- |
@@ -126,8 +129,8 @@ Players records who changed them and when):
 These are **indexes, not course handicaps** — each one is converted per course
 and tee before any allowance is applied.
 
-Default allowances (editable in **Admin → Rules** for every match of that
-format, or per match in **Admin → Formats & pairings**):
+Default allowances (editable in **Tour settings → Rules** for every match of
+that format, or per match in **Tour settings → Formats & pairings**):
 
 | Format | Allowance |
 | --- | --- |
@@ -135,6 +138,7 @@ format, or per match in **Admin → Formats & pairings**):
 | Better Ball | 90% each |
 | Singles | 100% |
 | 2-Man Scramble | 35 / 15% |
+| Shamble | 90% each (own ball in from the chosen drive) |
 | Alternate Shot | 50% of combined |
 
 Plus handicaps are supported and give strokes back from the easiest holes.
@@ -155,7 +159,7 @@ hole, a matchup, a points value and — optionally — its own handicap allowanc
 There is no separate notion of a "day type", and nothing in the code knows that
 Day 3 is unusual.
 
-**Admin → Formats & pairings** shows, per round:
+**Tour settings → Formats & pairings** shows, per round:
 
 - a **coverage bar** of holes 1–18 coloured by which match covers each one, so
   gaps and overlaps are visible before anyone tees off;
@@ -186,7 +190,7 @@ one.
 
 ---
 
-## 4-balls vs matches
+## 4-balls vs matchups
 
 Two different things, stored in two different tables, on purpose.
 
@@ -194,13 +198,20 @@ Two different things, stored in two different tables, on purpose.
 | --- | --- | --- |
 | Answers | Who do I walk round with? | Who am I playing against? |
 | Changes | Day to day, often on the first tee | Set before the round by the organiser |
-| Edited by | **Any signed-in player** | Admin PIN only |
-| Where | Round → 4-balls | Admin → Formats & pairings |
+| Edited by | **Anyone** | **Anyone** |
+| Where | Round → Edit 4-balls | Round → Edit matchups |
 
 They coincide on a better-ball day — one 4-ball is one match — and diverge
 everywhere else. A Day 4 singles 4-ball contains two separate matches. On Day 3
-the group stays together for all 18 holes while the competitive format changes
-three times underneath it. Nothing assumes they line up.
+the group stays together for all 18 holes while the format changes three times
+underneath it, and each six-hole section can be paired differently. Nothing
+assumes they line up, and changing one never rewrites the other.
+
+**Matchups are edited per hole range.** `sectionsForRound` groups a round's
+matches by their start/end holes, so a normal day offers one section and Day 3
+offers three, each with its own **Edit matchups** control on the round screen
+and its own Save. Re-pairing holes 7–12 leaves 1–6 and 13–18 exactly as they
+were.
 
 Rules enforced on the 4-ball editor (`src/lib/rounds/four-balls.ts`):
 
@@ -222,31 +233,42 @@ pass through a state where a group has three or five players by accident.
 
 ## Permissions
 
-| | Full admin | Edit 4-balls | Enter scores |
-| --- | --- | --- | --- |
-| Anyone with the **admin PIN** | ✅ | ✅ | ✅ |
-| Any signed-in player (tour PIN) | ❌ | ✅ | ✅ |
-| Not signed in | ❌ | ❌ | ❌ |
+**There are none, and that is deliberate.** The app has no PINs and no roles.
+Anyone with the private Vercel link opens it, picks their name, and can use
+every part of it.
 
-**Admin access comes from the `ADMIN_PIN`, not from who you are.** It is not
-tied to being a captain and never has been. Connor Grealy is flagged as the
-organiser (`players.is_organiser`) and Jason Dunbar and Jordy West as captains
-(`players.is_captain`), but those flags are labels shown in the UI — the app
-does not read them to decide access.
+| | Anyone with the link |
+| --- | --- |
+| Open the app | ✅ |
+| Enter and correct scores | ✅ |
+| Edit the 4-balls | ✅ |
+| Edit who plays whom | ✅ |
+| Tour settings (handicaps, courses, formats, rules) | ✅ |
 
-That means the admin PIN is a shared secret, not an identity: whoever types it
-is an admin for that session, whatever name they picked. Give it to the
-organiser and the captains only.
+The security model is therefore: **the URL is the secret.** Do not post the
+link anywhere public. `players.is_organiser` and `players.is_captain` still
+exist, but purely as labels shown on the Teams screen — nothing reads them to
+decide access, and nothing ever did.
 
-Writes are enforced server-side, not in the browser:
+What replaces permissions is *separation and confirmation*, so that opening
+everything up does not make it easy to break something by accident:
 
-- `/api/admin/entity` — requires an **admin** session. Matches, pairings,
-  points, handicaps, courses, itinerary, score corrections.
-- `/api/groups` — requires **any** signed-in session. 4-balls only.
-- `/api/scores` — requires **any** signed-in session. Scores only.
+- **Day-to-day things are on the round**: 4-balls and matchups. Nothing else is
+  needed to play.
+- **Set-up things are behind More → Tour settings**: handicaps, courses, tee
+  choices, formats, points, rules. You go there deliberately.
+- **The matchup editor writes one column.** `/api/matchups` only ever updates
+  `match_sides.player_ids`, so the screen everyone uses cannot change a format,
+  a hole range or a points value even if it wanted to.
+- **Destructive actions confirm.** Wiping the scores is on the settings screen
+  behind an explicit confirmation, and `score_events` keeps the audit trail
+  regardless.
+- **Completed holes are closed, not locked.** A hole the match has moved past
+  needs a deliberate "correct this hole" tap first — a guard against a pocket
+  tap, not a permission.
 
-The anon key can only ever `select`, so a leaked key cannot write anything at
-all, whichever route it aims at.
+Writes still go through this app's own API routes holding the `service_role`
+key; the anon key can only ever `select`, so a leaked key cannot write anything.
 
 ---
 

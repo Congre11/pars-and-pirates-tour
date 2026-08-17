@@ -213,55 +213,21 @@ const SEED_ROUNDS: SeedRound[] = [
     courseKey: 'pga-sultan',
     // Matches what `describeRoundFormat` derives from the matches below, so a
     // freshly seeded tour does not immediately offer to relabel itself.
-    formatLabel: 'H1–6 Singles · H7–12 Scramble · H13–18 Alt. Shot',
+    formatLabel: 'H1–6 Scramble · H7–12 Shamble · H13–18 Better Ball',
     teeTime: '12:00',
     notes:
       'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.',
+    // Three six-hole formats off one card, two matches in each. The pairings
+    // below follow the default 4-balls, but every section can be re-paired
+    // independently on the round screen without moving anybody's 4-ball.
     matches: [
-      // Holes 1-6: four singles matches.
-      {
-        key: 'd3-s1',
-        name: 'Singles 1',
-        format: 'singles',
-        startHole: 1,
-        endHole: 6,
-        points: 0.25,
-        sides: [['jason-dunbar'], ['jordy-west']],
-      },
-      {
-        key: 'd3-s2',
-        name: 'Singles 2',
-        format: 'singles',
-        startHole: 1,
-        endHole: 6,
-        points: 0.25,
-        sides: [['alan-hector'], ['connor-grealy']],
-      },
-      {
-        key: 'd3-s3',
-        name: 'Singles 3',
-        format: 'singles',
-        startHole: 1,
-        endHole: 6,
-        points: 0.25,
-        sides: [['andrew-rushmere'], ['nick-georgoulakis']],
-      },
-      {
-        key: 'd3-s4',
-        name: 'Singles 4',
-        format: 'singles',
-        startHole: 1,
-        endHole: 6,
-        points: 0.25,
-        sides: [['ryan-dahl'], ['dan-kramer']],
-      },
-      // Holes 7-12: two 2-man scrambles.
+      // Holes 1-6: two-man scramble.
       {
         key: 'd3-sc1',
         name: 'Scramble 1',
         format: 'two_man_scramble',
-        startHole: 7,
-        endHole: 12,
+        startHole: 1,
+        endHole: 6,
         points: 0.5,
         sides: [
           ['jason-dunbar', 'alan-hector'],
@@ -272,6 +238,31 @@ const SEED_ROUNDS: SeedRound[] = [
         key: 'd3-sc2',
         name: 'Scramble 2',
         format: 'two_man_scramble',
+        startHole: 1,
+        endHole: 6,
+        points: 0.5,
+        sides: [
+          ['andrew-rushmere', 'ryan-dahl'],
+          ['nick-georgoulakis', 'dan-kramer'],
+        ],
+      },
+      // Holes 7-12: shamble — best drive, then own ball in, lower net counts.
+      {
+        key: 'd3-sh1',
+        name: 'Shamble 1',
+        format: 'shamble',
+        startHole: 7,
+        endHole: 12,
+        points: 0.5,
+        sides: [
+          ['jason-dunbar', 'alan-hector'],
+          ['jordy-west', 'connor-grealy'],
+        ],
+      },
+      {
+        key: 'd3-sh2',
+        name: 'Shamble 2',
+        format: 'shamble',
         startHole: 7,
         endHole: 12,
         points: 0.5,
@@ -280,11 +271,11 @@ const SEED_ROUNDS: SeedRound[] = [
           ['nick-georgoulakis', 'dan-kramer'],
         ],
       },
-      // Holes 13-18: two alternate-shot matches.
+      // Holes 13-18: two-man better ball.
       {
-        key: 'd3-f1',
-        name: 'Alternate Shot 1',
-        format: 'foursomes',
+        key: 'd3-bb1',
+        name: 'Better Ball 1',
+        format: 'better_ball',
         startHole: 13,
         endHole: 18,
         points: 0.5,
@@ -294,9 +285,9 @@ const SEED_ROUNDS: SeedRound[] = [
         ],
       },
       {
-        key: 'd3-f2',
-        name: 'Alternate Shot 2',
-        format: 'foursomes',
+        key: 'd3-bb2',
+        name: 'Better Ball 2',
+        format: 'better_ball',
         startHole: 13,
         endHole: 18,
         points: 0.5,
@@ -401,7 +392,7 @@ const SEED_ITINERARY: SeedItineraryItem[] = [
 
   // 1 Sep 2026 — Golf Day 3
   { date: '2026-09-01', startTime: '09:00', endTime: '11:00', title: 'Breakfast', location: 'Hotel', details: null, category: 'meal' },
-  { date: '2026-09-01', startTime: '12:00', endTime: null, title: 'GOLF DAY 3 — PGA Sultan', location: 'Antalya Golf Club, Belek', details: 'H1–6 Singles • H7–12 Two-man Scramble • H13–18 Alternate Shot. Tee off 12:00.', category: 'golf', roundKey: 'day-3' },
+  { date: '2026-09-01', startTime: '12:00', endTime: null, title: 'GOLF DAY 3 — PGA Sultan', location: 'Antalya Golf Club, Belek', details: 'H1–6 Two-man Scramble • H7–12 Shamble • H13–18 Better Ball. Tee off 12:00.', category: 'golf', roundKey: 'day-3' },
   { date: '2026-09-01', startTime: '19:00', endTime: null, title: 'Captains announce Day 4 singles', location: 'Hotel', details: 'The big one. Singles order revealed.', category: 'ceremony' },
   { date: '2026-09-01', startTime: '20:00', endTime: null, title: 'Free evening', location: null, details: 'Rest up before the final day.', category: 'rest' },
 
@@ -501,6 +492,8 @@ export function buildSeedSnapshot(): TourSnapshot {
       location: seedCourse.location,
       sourceUrl: seedCourse.sourceUrl,
       notes: seedCourse.notes,
+      routing: seedCourse.routing ?? null,
+      nineNames: seedCourse.nineNames ?? null,
       dataVerified: seedCourse.dataVerified,
       verifiedAt: null,
       verifiedBy: null,

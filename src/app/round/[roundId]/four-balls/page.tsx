@@ -18,15 +18,14 @@ import { describeRoundFormat } from '@/lib/rounds/format-plan';
 /**
  * Edit the day's 4-balls.
  *
- * Open to every signed-in player — no admin PIN. Rearranging who walks with
- * whom is a group decision made on the first tee, not an organiser's job, so
- * this screen is deliberately outside /admin and writes through /api/groups,
- * which requires a session but not an admin one.
+ * Open to everyone, like the rest of the app. Rearranging who walks with whom
+ * is a decision made on the first tee, not an organiser's job, so this screen
+ * sits on the round itself rather than under Tour settings.
  *
- * What this screen does NOT change is the competitive structure. The matches,
- * formats and points are set in Admin -> Formats & pairings; this only moves
- * bodies between buggies. The panel at the bottom spells that out, because the
- * two happen to coincide on a better-ball day and diverge on every other.
+ * What this screen does NOT change is who plays whom. That has its own editor
+ * (`../matchups`), also open to everyone; this one only moves bodies between
+ * buggies. The panel at the bottom spells the difference out, because the two
+ * coincide on a better-ball day and diverge on every other.
  */
 export default function FourBallsPage({ params }: { params: Promise<{ roundId: string }> }) {
   const { roundId } = use(params);
@@ -152,7 +151,7 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
 
       <p className="card px-3.5 py-3 text-sm leading-snug text-chalk-300">
         Who walks round together. Tap a player, then tap another to swap them. Anyone on the tour
-        can change this — you do not need the admin PIN.
+        can change this, and everyone sees it within seconds.
       </p>
 
       {/* --- The groups ----------------------------------------------------- */}
@@ -358,8 +357,11 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
           )}
         </ul>
         <p className="mt-2 text-xs text-chalk-500">
-          Matches, formats and points are set by the organiser in Admin → Formats &amp; pairings.
+          Who plays whom is edited separately, and is also open to everyone.
         </p>
+        <Link href={`/round/${round.id}/matchups`} className="btn-ghost mt-2 w-full !py-2 text-xs">
+          Edit matchups
+        </Link>
       </div>
     </div>
   );

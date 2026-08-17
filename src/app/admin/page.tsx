@@ -1,26 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from '@/lib/auth/session-provider';
 import { useTour } from '@/lib/data/provider';
-import { AdminLocked } from '@/components/admin/AdminShell';
 import { LinkRow, PageHeader, SectionTitle } from '@/components/ui';
 
-/** Admin hub. Every editable part of the tour hangs off here. */
+/**
+ * Tour settings.
+ *
+ * Open to everyone — the app has no PINs. These screens are simply the ones
+ * you set up once before the tour rather than use on the course, which is why
+ * they live behind More rather than on the round screen. The things you
+ * actually change day to day (4-balls, matchups) are on the round itself.
+ */
 export default function AdminPage() {
-  const { session, pinRequired } = useSession();
   const { snapshot } = useTour();
-
-  if (pinRequired && !session?.isAdmin) {
-    return <AdminLocked title="Admin" />;
-  }
 
   const missingHandicaps = snapshot.players.filter((p) => p.handicapIndex === null).length;
   const unverifiedCourses = snapshot.courses.filter((c) => !c.dataVerified).length;
 
   return (
     <div className="space-y-3 pb-6">
-      <PageHeader title="Admin" back="/more" subtitle="Organiser & captains" />
+      <PageHeader title="Tour settings" back="/more" subtitle="Set up once, before you play" />
+
+      <p className="card px-3.5 py-3 text-sm leading-snug text-chalk-300">
+        Looking for today&rsquo;s <strong>4-balls</strong> or <strong>matchups</strong>? Those are on the
+        round itself — open the day from the Schedule or the Leaderboard. You do not need this
+        screen for either.
+      </p>
 
       <SectionTitle>Before the tour</SectionTitle>
       <div className="space-y-2">

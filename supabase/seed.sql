@@ -13,7 +13,7 @@ begin;
 -- Captain references are set after players exist.
 set constraints all deferred;
 insert into tours (id, name, year, start_date, end_date, location, status, trophy_name, settings) values
-  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[0.9],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.35,0.15],"rounding":"nearest"},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
+  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[0.9],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.35,0.15],"rounding":"nearest"},"shamble":{"weights":[0.9],"rounding":"nearest"},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
 on conflict (id) do update set
   name = excluded.name,
   year = excluded.year,
@@ -64,17 +64,19 @@ on conflict (id) do update set
   sort_order = excluded.sort_order
 ;
 
-insert into courses (id, tour_id, name, location, source_url, notes, data_verified, verified_at, verified_by, source_notes) values
-  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo Course', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — 4-man Team Scramble. Tee times 11:00.', false, null, null, null),
-  ('b53cfe96-8326-4678-8796-7aa2ac0112c0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Carya Golf Course', 'Carya Golf Club, Belek, Turkey', null, 'Day 2 — Better Ball Match Play. Twilight tee time 18:27, floodlit finish.', false, null, null, null),
-  ('e17d413e-7ca8-4498-8928-c142e15860f0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'PGA Sultan', 'Antalya Golf Club, Belek, Turkey', null, 'Day 3 — one course, three six-hole matches: H1-6 Singles, H7-12 Two-man Scramble, H13-18 Alternate Shot.', false, null, null, null),
-  ('265c5394-11e7-47d2-8ebd-ac38dc39670a', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Montgomerie Maxx Royal', 'Montgomerie Maxx Royal, Belek, Turkey', null, 'Day 4 — Singles Match Play. Four concurrent matches. Trophy presented after the round.', false, null, null, null)
+insert into courses (id, tour_id, name, location, source_url, notes, routing, nine_names, data_verified, verified_at, verified_by, source_notes) values
+  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo — Queen’s + Prince’s', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — 4-man Team Scramble. Tee times 11:00.', 'Queen’s loop (holes 1–9), then Prince’s loop (holes 10–18)', array['Queen’s', 'Prince’s']::text[], false, null, null, null),
+  ('b53cfe96-8326-4678-8796-7aa2ac0112c0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Carya Golf Course', 'Carya Golf Club, Belek, Turkey', null, 'Day 2 — Better Ball Match Play. Twilight tee time 18:27, floodlit finish.', null, null, false, null, null, null),
+  ('e17d413e-7ca8-4498-8928-c142e15860f0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'PGA Sultan', 'Antalya Golf Club, Belek, Turkey', null, 'Day 3 — one course, three six-hole formats: H1-6 Two-man Scramble, H7-12 Shamble, H13-18 Better Ball.', null, null, false, null, null, null),
+  ('265c5394-11e7-47d2-8ebd-ac38dc39670a', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Montgomerie Maxx Royal', 'Montgomerie Maxx Royal, Belek, Turkey', null, 'Day 4 — Singles Match Play. Four concurrent matches. Trophy presented after the round.', null, null, false, null, null, null)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
   name = excluded.name,
   location = excluded.location,
   source_url = excluded.source_url,
   notes = excluded.notes,
+  routing = excluded.routing,
+  nine_names = excluded.nine_names,
   data_verified = excluded.data_verified,
   verified_at = excluded.verified_at,
   verified_by = excluded.verified_by,
@@ -189,7 +191,7 @@ on conflict (id) do update set
 insert into rounds (id, tour_id, day_no, name, date, course_id, tee_id, format_label, tee_time, status, notes, sort_order) values
   ('8296c225-7362-4e9f-80a3-53118e5c9757', '215244a1-d717-445b-8ddf-4dbd03d820a3', 1, 'Day 1 — Scramble', '2026-08-29', 'b494460c-9465-4986-8c5f-04d89a469d5e', '8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', '4-Man Team Scramble', '11:00', 'upcoming', 'Breakfast 08:00–09:30. Springboks v New Zealand at 17:00 — Springbok jerseys are a must. Day 2 teams announced after the rugby.', 0),
   ('7f96bd6c-7462-4032-8da3-4e588f5c98ea', '215244a1-d717-445b-8ddf-4dbd03d820a3', 2, 'Day 2 — Better Ball', '2026-08-30', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', '9f42c02f-b37a-414d-8d6a-d4430318e655', 'Better Ball Match Play', '18:27', 'upcoming', 'Sleep in. Free day. First fines meeting after the round. Out to town — LARGE.', 1),
-  ('8096beff-7562-41c5-8ea3-4feb905c9a7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', 3, 'Day 3 — Triple Threat', '2026-09-01', 'e17d413e-7ca8-4498-8928-c142e15860f0', '5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'H1–6 Singles · H7–12 Scramble · H13–18 Alt. Shot', '12:00', 'upcoming', 'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.', 2),
+  ('8096beff-7562-41c5-8ea3-4feb905c9a7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', 3, 'Day 3 — Triple Threat', '2026-09-01', 'e17d413e-7ca8-4498-8928-c142e15860f0', '5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'H1–6 Scramble · H7–12 Shamble · H13–18 Better Ball', '12:00', 'upcoming', 'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.', 2),
   ('7d96ba46-6e62-46c0-83a3-57ca895c8f78', '215244a1-d717-445b-8ddf-4dbd03d820a3', 4, 'Day 4 — Singles', '2026-09-02', '265c5394-11e7-47d2-8ebd-ac38dc39670a', '6da36679-2241-4d5b-88fe-e7952820ff33', 'Singles Match Play', '10:30', 'upcoming', 'Breakfast 07:00–09:00. Trophy presentation, closing ceremony and final fines after the round. Out in town.', 3)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
@@ -227,14 +229,12 @@ insert into matches (id, round_id, name, format, start_hole, end_hole, points_va
   ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 2, null, 'upcoming', 0),
   ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, null, 'upcoming', 0),
   ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, null, 'upcoming', 1),
-  ('c72bcb14-7807-47a6-82d3-b7d0988425ce', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 1', 'singles', 1, 6, 0.25, null, 'upcoming', 0),
-  ('ca2bcfcd-7707-4613-85d3-bc899784243b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 2', 'singles', 1, 6, 0.25, null, 'upcoming', 1),
-  ('c92bce3a-7607-4480-84d3-baf6968422a8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 3', 'singles', 1, 6, 0.25, null, 'upcoming', 2),
-  ('c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 4', 'singles', 1, 6, 0.25, null, 'upcoming', 3),
-  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1', 'two_man_scramble', 7, 12, 0.5, null, 'upcoming', 4),
-  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2', 'two_man_scramble', 7, 12, 0.5, null, 'upcoming', 5),
-  ('caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 1', 'foursomes', 13, 18, 0.5, null, 'upcoming', 6),
-  ('c7f7f144-8d37-46ea-83b3-7ee80db2a932', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 2', 'foursomes', 13, 18, 0.5, null, 'upcoming', 7),
+  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 0),
+  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 1),
+  ('c35662ea-0002-42d0-879a-b34e0b6d35b8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 1', 'shamble', 7, 12, 0.5, null, 'upcoming', 2),
+  ('c2566157-0302-4789-869a-b1bb0e6d3a71', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 2', 'shamble', 7, 12, 0.5, null, 'upcoming', 3),
+  ('7ad6280b-ecd9-4785-8f91-39bf786b835d', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 1', 'better_ball', 13, 18, 0.5, null, 'upcoming', 4),
+  ('7bd6299e-e9d9-42cc-8091-3b52756b7ea4', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 2', 'better_ball', 13, 18, 0.5, null, 'upcoming', 5),
   ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, null, 'upcoming', 0),
   ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, null, 'upcoming', 1),
   ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, null, 'upcoming', 2),
@@ -258,22 +258,18 @@ insert into match_sides (id, match_id, team_id, player_ids, handicap_override, s
   ('955ac5a2-9a2f-4540-8e85-7ede28c0b9c8', 'f6fcf54f-e606-4055-881d-6413c194152d', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
   ('f4caeb90-de53-4d82-8e1c-b43cece4c88a', 'f7fcf6e2-e306-4b9c-891d-65a6be941074', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
   ('f5caed23-df53-4f15-8f1c-b5cfede4ca1d', 'f7fcf6e2-e306-4b9c-891d-65a6be941074', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
-  ('69c1e626-dedd-40c0-8ee8-91dafa0e1078', 'c72bcb14-7807-47a6-82d3-b7d0988425ce', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346']::uuid[], null, 0),
-  ('6ac1e7b9-dfdd-4253-8fe8-936dfb0e120b', 'c72bcb14-7807-47a6-82d3-b7d0988425ce', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c']::uuid[], null, 1),
-  ('c69e0b57-006e-45e5-8a86-86ab9b9dec1d', 'ca2bcfcd-7707-4613-85d3-bc899784243b', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
-  ('c59e09c4-ff6e-4452-8986-85189a9dea8a', 'ca2bcfcd-7707-4613-85d3-bc899784243b', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
-  ('cffcede8-19e0-495e-840d-422c151106b6', 'c92bce3a-7607-4480-84d3-baf6968422a8', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5']::uuid[], null, 0),
-  ('d0fcef7b-1ae0-4af1-850d-43bf16110849', 'c92bce3a-7607-4480-84d3-baf6968422a8', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4']::uuid[], null, 1),
-  ('b6197091-9a0c-4eb3-80e8-9ddd353bd4eb', 'c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
-  ('b5196efe-990c-4d20-8fe8-9c4a343bd358', 'c42bc65b-7d07-4f85-87d3-bfaf9d842dad', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
   ('ef215c2b-b02a-46dd-88d1-90076c6e13c5', '3b6ce621-ffe7-4c53-8f89-5d958b79382b', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
   ('ee215a98-af2a-454a-87d1-8e746b6e1232', '3b6ce621-ffe7-4c53-8f89-5d958b79382b', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
   ('3383675a-0e9a-4b38-8bf5-6ad6cc1b6ca0', '386ce168-00e7-4de6-8c89-58dc8c7939be', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
   ('348368ed-0f9a-4ccb-8cf5-6c69cd1b6e33', '386ce168-00e7-4de6-8c89-58dc8c7939be', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
-  ('3db55967-955c-4521-88bd-5fb3201dc259', 'caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
-  ('3cb557d4-945c-438e-87bd-5e201f1dc0c6', 'caf7f5fd-8c37-4557-86b3-83a10cb2a79f', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
-  ('60d9fdb6-f3f3-48ec-8be1-6ce29ff25d04', 'c7f7f144-8d37-46ea-83b3-7ee80db2a932', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
-  ('61d9ff49-f4f3-4a7f-8ce1-6e75a0f25e97', 'c7f7f144-8d37-46ea-83b3-7ee80db2a932', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
+  ('aaa7d0b8-52e7-4696-8457-3b14ef151fce', 'c35662ea-0002-42d0-879a-b34e0b6d35b8', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
+  ('aba7d24b-53e7-4829-8557-3ca7f0152161', 'c35662ea-0002-42d0-879a-b34e0b6d35b8', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
+  ('4c37ac5d-afc3-4bc7-85bf-d4e9abf0491f', 'c2566157-0302-4789-869a-b1bb0e6d3a71', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
+  ('4b37aaca-aec3-4a34-84bf-d356aaf0478c', 'c2566157-0302-4789-869a-b1bb0e6d3a71', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
+  ('fd3c1cd1-51f6-4293-85af-1c2db19bcdfb', '7ad6280b-ecd9-4785-8f91-39bf786b835d', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
+  ('fc3c1b3e-50f6-4100-84af-1a9ab09bcc68', '7ad6280b-ecd9-4785-8f91-39bf786b835d', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
+  ('dbd41a1c-951b-4942-855b-ab8874bfdb2a', '7bd6299e-e9d9-42cc-8091-3b52756b7ea4', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
+  ('dcd41baf-961b-4ad5-865b-ad1b75bfdcbd', '7bd6299e-e9d9-42cc-8091-3b52756b7ea4', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
   ('ee835f4b-8c23-4edd-8367-43ff3de5bb05', '6fdc0641-c737-4a2b-8917-c3bd478b7d03', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346']::uuid[], null, 0),
   ('ed835db8-8b23-4d4a-8267-426c3ce5b972', '6fdc0641-c737-4a2b-8917-c3bd478b7d03', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c']::uuid[], null, 1),
   ('b1a76c7a-ea93-4338-868b-512e9d9313e0', '6cdc0188-c837-4bbe-8617-bf04488b7e96', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
@@ -309,7 +305,7 @@ insert into itinerary_items (id, tour_id, date, start_time, end_time, title, loc
   ('14961037-54d6-45a5-8d9b-85cb654edc7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-31', '19:00', null, 'Captain tee announcement', 'Hotel', 'Captains reveal the Day 3 line-ups.', 'ceremony', null, 15),
   ('7c30c6e0-3277-45a6-8cf0-6a348280365e', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-31', '20:30', null, 'Nice late lunch / dinner', 'TBC', 'Somewhere decent.', 'meal', null, 16),
   ('543d36b9-da04-497b-8f4e-ebc5fb8b8e33', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-01', '09:00', '11:00', 'Breakfast', 'Hotel', null, 'meal', null, 17),
-  ('61481aa6-ec9e-4498-8319-8262d74b0070', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-01', '12:00', null, 'GOLF DAY 3 — PGA Sultan', 'Antalya Golf Club, Belek', 'H1–6 Singles • H7–12 Two-man Scramble • H13–18 Alternate Shot. Tee off 12:00.', 'golf', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 18),
+  ('61481aa6-ec9e-4498-8319-8262d74b0070', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-01', '12:00', null, 'GOLF DAY 3 — PGA Sultan', 'Antalya Golf Club, Belek', 'H1–6 Two-man Scramble • H7–12 Shamble • H13–18 Better Ball. Tee off 12:00.', 'golf', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 18),
   ('d4a3e1bb-ac32-4601-82b4-b0cfeceb0669', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-01', '19:00', null, 'Captains announce Day 4 singles', 'Hotel', 'The big one. Singles order revealed.', 'ceremony', null, 19),
   ('9813bbca-1b04-433c-82b5-ca3ee49ef4c4', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-01', '20:00', null, 'Free evening', null, 'Rest up before the final day.', 'rest', null, 20),
   ('6a117cf0-62b2-49a6-81c9-6bbc2809f0be', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-09-02', '07:00', '09:00', 'Breakfast', 'Hotel', null, 'meal', null, 21),

@@ -77,6 +77,9 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
               <div className="min-w-0">
                 <h2 className="display truncate text-xl font-bold">{course.name}</h2>
                 <p className="mt-0.5 truncate text-sm text-chalk-400">{course.location}</p>
+                {course.routing && (
+                  <p className="mt-1 text-xs leading-snug text-brass-300">{course.routing}</p>
+                )}
               </div>
               <span className="chip shrink-0 bg-white/10 text-chalk-300">
                 {round.teeTime ?? '—'}
@@ -105,28 +108,39 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
         </Link>
       )}
 
-      {/* Anyone can rearrange the 4-balls — no admin PIN needed. */}
-      <Link href={`/round/${round.id}/four-balls`} className="card tap block px-3.5 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">4-balls</span>
-            <span className="block truncate text-xs text-chalk-500">
-              {fourBalls.length > 0
-                ? fourBalls
-                    .map((group) =>
-                      group.playerIds
-                        .map((id) => playerById(id)?.name.split(' ')[0] ?? '?')
-                        .join(', '),
-                    )
-                    .join('  ·  ')
-                : 'Not set yet — tap to group the players'}
-            </span>
-          </span>
-          <span className="shrink-0 text-chalk-500" aria-hidden>
-            ›
-          </span>
-        </div>
-      </Link>
+      {/* --- 4-balls: who walks together. Editable by everyone. ------------- */}
+      <SectionTitle>4-balls</SectionTitle>
+      <div className="space-y-2">
+        {fourBalls.length === 0 ? (
+          <div className="card px-3.5 py-3 text-sm text-chalk-400">
+            No 4-balls set for this round yet.
+          </div>
+        ) : (
+          fourBalls.map((group) => (
+            <div key={group.id} className="card px-3.5 py-3">
+              <div className="label mb-2">{group.name}</div>
+              <ul className="space-y-1">
+                {group.playerIds.map((id) => {
+                  const player = playerById(id);
+                  const team = player ? snapshot.teams.find((t) => t.id === player.teamId) : undefined;
+                  return (
+                    <li key={id} className="flex items-center gap-2 text-sm">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: team?.colour }}
+                      />
+                      <span className="truncate">{player?.name ?? 'Unknown'}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))
+        )}
+        <Link href={`/round/${round.id}/four-balls`} className="btn-ghost w-full">
+          Edit 4-balls
+        </Link>
+      </div>
 
       {course && !course.dataVerified && (
         <Warning href={`/admin/courses/${course.id}/verify`}>
@@ -167,17 +181,19 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
       {matches.length === 0 ? (
         <EmptyState
           title="No matches set up yet"
-          detail="Captains can add the pairings in Admin → Formats & pairings."
+          detail="Matches are added in More → Tour settings → Formats & pairings."
           cta={
             <Link href="/admin/pairings" className="btn-ghost mt-2">
-              Set up pairings
+              Set up matches
             </Link>
           }
         />
       ) : (
+        // One block per hole range, each with its own Edit matchups control —
+        // so Day 3's three sections are re-paired independently.
         [...groups.entries()].map(([key, groupMatches]) => {
           const first = groupMatches[0];
-          const isFullRound = first.startHole === 1 && first.endHole === 18;
+          const isFullRound = first.startHole === 1 && first.endHole === (holes.length || 18);
           return (
             <div key={key}>
               <SectionTitle>
@@ -189,6 +205,12 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
                 {groupMatches.map((match) => (
                   <MatchTile key={match.id} matchId={match.id} showFormat={false} />
                 ))}
+                <Link
+                  href={`/round/${round.id}/matchups?section=${key}`}
+                  className="btn-ghost w-full"
+                >
+                  Edit matchups{isFullRound ? '' : ` · holes ${first.startHole}–${first.endHole}`}
+                </Link>
               </div>
             </div>
           );

@@ -39,26 +39,35 @@ describe('tournament points structure', () => {
     expect(pointsFor(2)).toBe(2);
   });
 
-  it('Day 3 is 4 singles at 0.25, 2 scrambles at 0.5 and 2 alternate shots at 0.5', () => {
+  it('Day 3 is Scramble H1–6, Shamble H7–12 and Better Ball H13–18', () => {
     const matches = byDay(3);
-    expect(matches).toHaveLength(8);
-
-    const singles = matches.filter((m) => m.format === 'singles');
-    expect(singles).toHaveLength(4);
-    expect(singles.every((m) => m.pointsValue === 0.25)).toBe(true);
-    expect(singles.every((m) => m.startHole === 1 && m.endHole === 6)).toBe(true);
+    expect(matches).toHaveLength(6);
 
     const scrambles = matches.filter((m) => m.format === 'two_man_scramble');
     expect(scrambles).toHaveLength(2);
     expect(scrambles.every((m) => m.pointsValue === 0.5)).toBe(true);
-    expect(scrambles.every((m) => m.startHole === 7 && m.endHole === 12)).toBe(true);
+    expect(scrambles.every((m) => m.startHole === 1 && m.endHole === 6)).toBe(true);
 
-    const foursomes = matches.filter((m) => m.format === 'foursomes');
-    expect(foursomes).toHaveLength(2);
-    expect(foursomes.every((m) => m.pointsValue === 0.5)).toBe(true);
-    expect(foursomes.every((m) => m.startHole === 13 && m.endHole === 18)).toBe(true);
+    const shambles = matches.filter((m) => m.format === 'shamble');
+    expect(shambles).toHaveLength(2);
+    expect(shambles.every((m) => m.pointsValue === 0.5)).toBe(true);
+    expect(shambles.every((m) => m.startHole === 7 && m.endHole === 12)).toBe(true);
 
+    const betterBall = matches.filter((m) => m.format === 'better_ball');
+    expect(betterBall).toHaveLength(2);
+    expect(betterBall.every((m) => m.pointsValue === 0.5)).toBe(true);
+    expect(betterBall.every((m) => m.startHole === 13 && m.endHole === 18)).toBe(true);
+
+    // Day 3 is still worth 3, so the tour still totals 11.
     expect(pointsFor(3)).toBe(3);
+  });
+
+  it('has no singles or alternate shot left on Day 3', () => {
+    // The formats Day 3 used to use. If either reappears the round has
+    // silently reverted to the old specification.
+    const formats = new Set(byDay(3).map((m) => m.format));
+    expect(formats.has('singles')).toBe(false);
+    expect(formats.has('foursomes')).toBe(false);
   });
 
   it('Day 4 is four singles worth 1 point each', () => {
@@ -103,8 +112,9 @@ describe('tournament points structure', () => {
 
   it('halves each match at exactly half its value', () => {
     const round = snapshot.rounds.find((r) => r.dayNo === 3)!;
+    // A per-player Day 3 match, so one score per side settles each hole.
     const match = snapshot.matches.find(
-      (m) => m.roundId === round.id && m.format === 'singles',
+      (m) => m.roundId === round.id && m.format === 'better_ball',
     )!;
     const sides = snapshot.sides.filter((s) => s.matchId === match.id);
     const holes = snapshot.holes.filter((h) => h.courseId === round.courseId);
@@ -138,9 +148,11 @@ describe('tournament points structure', () => {
     });
 
     expect(outcome.finalStatus).toBe('Halved');
-    // 0.25-point match halved = 0.125 each, exactly as specified.
-    expect(outcome.points[sides[0].id]).toBe(0.125);
-    expect(outcome.points[sides[1].id]).toBe(0.125);
+    // A 0.5-point match halved is 0.25 each — the value splits exactly,
+    // whatever it is.
+    expect(match.pointsValue).toBe(0.5);
+    expect(outcome.points[sides[0].id]).toBe(0.25);
+    expect(outcome.points[sides[1].id]).toBe(0.25);
   });
 });
 
@@ -218,7 +230,7 @@ describe('rounds link to courses', () => {
 
   it('plays the scheduled courses on the scheduled dates', () => {
     const expected: Array<[string, string]> = [
-      ['2026-08-29', 'Faldo Course'],
+      ['2026-08-29', 'Faldo — Queen’s + Prince’s'],
       ['2026-08-30', 'Carya Golf Course'],
       ['2026-09-01', 'PGA Sultan'],
       ['2026-09-02', 'Montgomerie Maxx Royal'],
@@ -344,18 +356,18 @@ describe('seeded 4-balls', () => {
     // The physical group walks 18 holes while the format changes three times.
     const round = snapshot.rounds.find((r) => r.dayNo === 3)!;
     expect(snapshot.groups.filter((g) => g.roundId === round.id)).toHaveLength(2);
-    expect(snapshot.matches.filter((m) => m.roundId === round.id)).toHaveLength(8);
+    expect(snapshot.matches.filter((m) => m.roundId === round.id)).toHaveLength(6);
   });
 });
 
 describe('the seeded format plan is a default, not a fixture', () => {
   it('stores every round as ordinary editable matches, Day 3 included', () => {
-    // Nothing marks Day 3 as special: it is eight rows differing only in the
+    // Nothing marks Day 3 as special: it is six rows differing only in the
     // hole range and format they carry, exactly like every other day.
     const round = snapshot.rounds.find((r) => r.dayNo === 3)!;
     const matches = snapshot.matches.filter((m) => m.roundId === round.id);
 
-    expect(matches).toHaveLength(8);
+    expect(matches).toHaveLength(6);
     for (const match of matches) {
       expect(match.roundId).toBe(round.id);
       expect(typeof match.startHole).toBe('number');

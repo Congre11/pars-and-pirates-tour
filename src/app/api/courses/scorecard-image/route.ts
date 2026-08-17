@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
+import { getSession } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -47,10 +47,8 @@ export async function GET(request: Request) {
 
 /** Store an uploaded photo against a course. */
 export async function POST(request: Request) {
+  // No PIN. The session is read only to record who uploaded the photo.
   const session = await getSession();
-  if (isPinRequired() && !session?.isAdmin) {
-    return NextResponse.json({ error: 'Admin PIN required.' }, { status: 403 });
-  }
 
   const supabase = getServiceSupabase();
   if (!supabase) {

@@ -47,6 +47,10 @@ export interface SeedCourse {
   location: string;
   sourceUrl: string | null;
   notes: string;
+  /** Which loops are played and in what order, where the club has several. */
+  routing?: string;
+  /** The loop names, front nine first. */
+  nineNames?: string[];
   dataVerified: boolean;
   tees: SeedTee[];
   defaultTeeKey: string;
@@ -79,10 +83,14 @@ function buildHoles(
 
 const FALDO: SeedCourse = {
   key: 'faldo',
-  name: 'Faldo Course',
+  // Cornelia's Faldo course is three nines; we are playing Queen's then
+  // Prince's, so the name says which 18 this actually is.
+  name: 'Faldo — Queen’s + Prince’s',
   location: 'Cornelia Golf Club, Belek, Turkey',
   sourceUrl: null,
   notes: 'Day 1 — 4-man Team Scramble. Tee times 11:00.',
+  routing: 'Queen’s loop (holes 1–9), then Prince’s loop (holes 10–18)',
+  nineNames: ['Queen’s', 'Prince’s'],
   dataVerified: false,
   defaultTeeKey: 'yellow',
   tees: [
@@ -140,7 +148,7 @@ const SULTAN: SeedCourse = {
   location: 'Antalya Golf Club, Belek, Turkey',
   sourceUrl: null,
   notes:
-    'Day 3 — one course, three six-hole matches: H1-6 Singles, H7-12 Two-man Scramble, H13-18 Alternate Shot.',
+    'Day 3 — one course, three six-hole formats: H1-6 Two-man Scramble, H7-12 Shamble, H13-18 Better Ball.',
   dataVerified: false,
   defaultTeeKey: 'yellow',
   tees: [
