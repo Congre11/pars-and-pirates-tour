@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pars and Pirates Tour">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e2419"/>
+      <stop offset="1" stop-color="#050c09"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Fairway sweep -->
+  <path d="M0 392c96-52 200-72 312-58 78 10 148 34 200 62v116H0z" fill="#0f7a4d" opacity="0.55"/>
+  <!-- Flagstick -->
+  <rect x="243" y="118" width="10" height="250" rx="5" fill="#f4d59a"/>
+  <path d="M253 122h132l-38 44 38 44H253z" fill="#8b1f2f"/>
+  <!-- Skull on the flag -->
+  <circle cx="300" cy="160" r="17" fill="#f4f8f5"/>
+  <circle cx="294" cy="157" r="4.5" fill="#8b1f2f"/>
+  <circle cx="306" cy="157" r="4.5" fill="#8b1f2f"/>
+  <rect x="293" y="171" width="14" height="6" rx="3" fill="#f4f8f5"/>
+  <!-- Ball -->
+  <circle cx="248" cy="392" r="34" fill="#f4f8f5"/>
+  <circle cx="238" cy="384" r="3.4" fill="#cfdcd4"/>
+  <circle cx="250" cy="380" r="3.4" fill="#cfdcd4"/>
+  <circle cx="260" cy="388" r="3.4" fill="#cfdcd4"/>
+  <circle cx="243" cy="396" r="3.4" fill="#cfdcd4"/>
+  <circle cx="256" cy="399" r="3.4" fill="#cfdcd4"/>
+</svg>

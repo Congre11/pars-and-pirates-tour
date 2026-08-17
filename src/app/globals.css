@@ -1,0 +1,172 @@
+@import 'tailwindcss';
+
+/* ===========================================================================
+   Pars & Pirates Tour — design tokens
+   ---------------------------------------------------------------------------
+   A dark "clubhouse" palette: deep fairway green, brass, and the two team
+   identities. Built dark-first because the leaderboard gets looked at in a bar
+   at 11pm as much as on a fairway at noon.
+   =========================================================================== */
+
+@theme {
+  --color-ink-950: #050c09;
+  --color-ink-900: #07120d;
+  --color-ink-850: #0b1a13;
+  --color-ink-800: #10241a;
+  --color-ink-700: #173425;
+  --color-ink-600: #1f4531;
+
+  --color-fairway-500: #0f7a4d;
+  --color-fairway-400: #17a066;
+  --color-fairway-300: #3ddc84;
+
+  --color-pirate-600: #6d1622;
+  --color-pirate-500: #8b1f2f;
+  --color-pirate-400: #c33346;
+  --color-pirate-300: #e8574a;
+
+  --color-brass-500: #b8892f;
+  --color-brass-400: #e5b567;
+  --color-brass-300: #f4d59a;
+
+  --color-chalk-50: #f4f8f5;
+  --color-chalk-200: #cfdcd4;
+  --color-chalk-400: #8ea79a;
+  --color-chalk-500: #6b8377;
+
+  --font-display: 'Georgia', 'Times New Roman', serif;
+
+  --radius-card: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background-color: var(--color-ink-950);
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(15, 122, 77, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, var(--color-ink-900) 0%, var(--color-ink-950) 100%);
+  background-attachment: fixed;
+  color: var(--color-chalk-50);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Room for the fixed bottom navigation plus the iPhone home indicator. */
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  overscroll-behavior-y: none;
+}
+
+/* Numbers in scorecards must line up in columns. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   Reusable pieces
+   --------------------------------------------------------------------------- */
+
+/* Tailwind v4 cannot @apply one custom component class inside another, so the
+   shared "tap" behaviour is written out in each rule rather than composed. */
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm;
+  }
+
+  .card-raised {
+    @apply rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 shadow-lg shadow-black/40;
+  }
+
+  .label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-chalk-400;
+  }
+
+  /* Every interactive control is at least 44px so it can be hit while walking. */
+  .tap {
+    @apply min-h-11 min-w-11 select-none transition-transform active:scale-[0.97];
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-xl px-4 py-3
+           text-sm font-semibold transition-all active:scale-[0.97];
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-xl px-4 py-3
+           text-sm font-semibold transition-all active:scale-[0.97]
+           bg-fairway-500 text-white hover:bg-fairway-400 disabled:opacity-40;
+  }
+
+  .btn-ghost {
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-xl px-4 py-3
+           text-sm font-semibold transition-all active:scale-[0.97]
+           border border-white/15 bg-white/5 text-chalk-50 hover:bg-white/10 disabled:opacity-40;
+  }
+
+  .btn-danger {
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-xl px-4 py-3
+           text-sm font-semibold transition-all active:scale-[0.97]
+           bg-pirate-500 text-white hover:bg-pirate-400 disabled:opacity-40;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-white/15 bg-ink-900/80 px-3 py-2.5 text-base text-chalk-50
+           outline-none placeholder:text-chalk-500 focus:border-fairway-400 focus:ring-2 focus:ring-fairway-400/30;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold;
+  }
+}
+
+/* Hide scrollbars on the horizontal hole strip while keeping it scrollable. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.5); }
+  70% { box-shadow: 0 0 0 12px rgba(61, 220, 132, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(61, 220, 132, 0); }
+}
+
+.live-dot {
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: slide-up 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
