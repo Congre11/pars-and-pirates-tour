@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 import { fetchHandicapIndex, hnaStatus, isHnaConfigured } from '@/lib/hna/adapter';
 
@@ -20,11 +19,6 @@ export async function GET() {
  * where a number came from and when.
  */
 export async function POST() {
-  const session = await getSession();
-  if (isPinRequired() && !session?.isAdmin) {
-    return NextResponse.json({ error: 'Admin PIN required.' }, { status: 403 });
-  }
-
   if (!isHnaConfigured()) {
     return NextResponse.json(
       {

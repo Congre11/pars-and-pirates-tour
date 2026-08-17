@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import {
-  SESSION_COOKIE,
-  checkPin,
-  getSession,
-  isPinRequired,
-  sessionCookieOptions,
-  signSession,
-} from '@/lib/auth/session';
+import { SESSION_COOKIE, getSession, sessionCookieOptions, signSession } from '@/lib/auth/session';
 import type { Session } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -15,37 +8,26 @@ export const runtime = 'nodejs';
 /** Who am I? */
 export async function GET() {
   const session = await getSession();
-  return NextResponse.json({ session, pinRequired: isPinRequired() });
+  return NextResponse.json({ session });
 }
 
-/** Join the tour with the PIN (and optionally say which player you are). */
+/**
+ * Say which player is using this phone.
+ *
+ * No PIN. The tour is private because the link is private, so this only
+ * records a name for attribution — it grants nothing.
+ */
 export async function POST(request: Request) {
-  let body: { pin?: string; playerId?: string | null; playerName?: string };
+  let body: { playerId?: string | null; playerName?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const pinRequired = isPinRequired();
-  let isAdmin = false;
-
-  if (pinRequired) {
-    const result = checkPin(body.pin ?? '');
-    if (!result.ok) {
-      return NextResponse.json({ error: 'That PIN is not right. Try again.' }, { status: 401 });
-    }
-    isAdmin = result.isAdmin;
-  } else if (body.pin) {
-    // Demo mode still honours the admin PIN if one happens to be set locally,
-    // so captains can rehearse the admin screens before the database exists.
-    isAdmin = checkPin(body.pin).isAdmin;
-  }
-
   const session: Session = {
     playerId: body.playerId ?? null,
     playerName: (body.playerName ?? '').slice(0, 60) || 'Guest',
-    isAdmin,
     issuedAt: Date.now(),
   };
 
@@ -55,7 +37,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ session });
 }
 
-/** Sign out of this device. */
+/** Switch to a different player on this device. */
 export async function DELETE() {
   const store = await cookies();
   store.delete(SESSION_COOKIE);

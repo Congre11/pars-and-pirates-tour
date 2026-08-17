@@ -30,16 +30,12 @@ export default function MorePage() {
         <LinkRow href="/fines" title="Fines" detail="The running tab" icon="💸" />
       </div>
 
-      <SectionTitle>Captains</SectionTitle>
+      <SectionTitle>Setting up the tour</SectionTitle>
       <div className="space-y-2">
         <LinkRow
           href="/admin"
-          title="Admin"
-          detail={
-            session?.isAdmin
-              ? 'Players, pairings, courses, scores and rules'
-              : 'Needs the captains’ PIN'
-          }
+          title="Tour settings"
+          detail="Handicaps, courses, tees, formats and rules"
           icon="🔧"
         />
         <LinkRow href="/more/setup" title="Setup checklist" detail="What is connected" icon="✅" />

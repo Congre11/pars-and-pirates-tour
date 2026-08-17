@@ -17,11 +17,21 @@ export type MatchFormat =
   | 'team_scramble'
   /** Two players a side, each plays their own ball, lower net counts. Day 2. */
   | 'better_ball'
-  /** One v one, each plays their own ball. Day 3 (H1-6) and Day 4. */
+  /** One v one, each plays their own ball. Day 4. */
   | 'singles'
-  /** Two players a side, one ball, best shot taken each time. Day 3 (H7-12). */
+  /** Two players a side, one ball, best shot taken each time. Day 3 (H1-6). */
   | 'two_man_scramble'
-  /** Two players a side, one ball, alternating shots. Day 3 (H13-18). */
+  /**
+   * Two players a side. Both tee off, the pair takes the better drive, then
+   * each plays their OWN ball in from there. The lower net of the two counts.
+   * Day 3 (H7-12).
+   *
+   * Scoring is therefore per-player and best-net — the same shape as better
+   * ball. What differs is only how the second shot is reached, which is a rule
+   * for the players rather than something the engine can observe.
+   */
+  | 'shamble'
+  /** Two players a side, one ball, alternating shots. */
   | 'foursomes';
 
 /** How many players make up one side in each format. */
@@ -30,6 +40,7 @@ export const PLAYERS_PER_SIDE: Record<MatchFormat, number> = {
   better_ball: 2,
   singles: 1,
   two_man_scramble: 2,
+  shamble: 2,
   foursomes: 2,
 };
 
@@ -52,6 +63,7 @@ export const FORMAT_LABELS: Record<MatchFormat, string> = {
   better_ball: 'Better Ball Match Play',
   singles: 'Singles Match Play',
   two_man_scramble: '2-Man Scramble',
+  shamble: 'Shamble',
   foursomes: 'Alternate Shot',
 };
 
@@ -60,6 +72,7 @@ export const FORMAT_SHORT_LABELS: Record<MatchFormat, string> = {
   better_ball: 'Better Ball',
   singles: 'Singles',
   two_man_scramble: 'Scramble',
+  shamble: 'Shamble',
   foursomes: 'Alt. Shot',
 };
 
@@ -124,6 +137,11 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
     singles: { weights: [1], rounding: 'nearest' },
     // 2-man scramble: 35% of the low handicap + 15% of the high.
     two_man_scramble: { weights: [0.35, 0.15], rounding: 'nearest' },
+    // Shamble: each player plays their own ball in, so the allowance is
+    // per-player like better ball. 90% is the WHS four-ball figure; the shared
+    // drive makes a lower number defensible, so this is editable in
+    // Tour settings -> Rules.
+    shamble: { weights: [0.9], rounding: 'nearest' },
     // WHS foursomes match play allowance is 50% of combined course handicaps.
     foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
   },
@@ -225,6 +243,18 @@ export interface Course {
   /** Optional link to the official published scorecard. Reference only. */
   sourceUrl: string | null;
   notes: string | null;
+  /**
+   * Which nines are played and in what order, where the club has more than
+   * one loop — e.g. "Queen's loop (1–9), then Prince's loop (10–18)". Null
+   * when the course is a single fixed 18.
+   */
+  routing: string | null;
+  /**
+   * The two loop names, front nine first, so the scorecard can label its
+   * halves exactly rather than guessing from `routing`. Null for a course
+   * with one fixed 18.
+   */
+  nineNames: string[] | null;
   /**
    * False until a human has checked the par / stroke index / rating data
    * against the real scorecard. The app shows a warning while this is false.
@@ -468,10 +498,16 @@ export interface TourSnapshot {
 // Session / auth
 // ---------------------------------------------------------------------------
 
+/**
+ * Who this device is.
+ *
+ * There is no password and no permission level — the tour is private because
+ * the link is private. All this records is which player is using the phone, so
+ * scores and edits can say who made them.
+ */
 export interface Session {
   /** The player this device is signed in as, if they picked one. */
   playerId: string | null;
   playerName: string;
-  isAdmin: boolean;
   issuedAt: number;
 }

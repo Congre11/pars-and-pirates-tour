@@ -147,11 +147,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ScoreStrip />
           <div className="flex items-center gap-2">
             <ConnectionPill />
-            {session?.isAdmin && (
-              <Link href="/admin" className="chip bg-white/10 text-chalk-200 tap">
-                ADMIN
-              </Link>
-            )}
           </div>
         </div>
       </header>

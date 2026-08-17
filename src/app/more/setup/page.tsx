@@ -41,7 +41,7 @@ export default function SetupPage() {
       detail:
         missingHandicaps === 0
           ? `All ${snapshot.players.length} players have a handicap index. These are indexes, not course handicaps — the app converts them per course and tee.`
-          : `${missingHandicaps} of ${snapshot.players.length} players still need one. Until then they are scored off scratch. Admin → Players.`,
+          : `${missingHandicaps} of ${snapshot.players.length} players still need one. Until then they are scored off scratch. Tour settings → Players.`,
     },
     {
       key: 'courses',
@@ -50,19 +50,19 @@ export default function SetupPage() {
       detail:
         unverifiedCourses === 0
           ? 'All four courses have been checked against the real scorecard.'
-          : `${unverifiedCourses} course(s) still use placeholder par / stroke index / rating data. Photograph the real card the evening before: Admin → Courses → Verify with a scorecard photo.`,
+          : `${unverifiedCourses} course(s) still use placeholder par / stroke index / rating data. Photograph the real card the evening before: Tour settings → Courses → Verify with a scorecard photo.`,
     },
     {
       key: 'tees',
       label: 'Tees chosen',
       ok: snapshot.rounds.every((r) => Boolean(r.teeId)),
-      detail: 'Each round has a tee selected. Change them in Admin → Rounds.',
+      detail: 'Each round has a tee selected. Change them in Tour settings → Rounds.',
     },
     {
       key: 'points',
       label: 'Tournament points',
       ok: true,
-      detail: 'Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4. 11 points in total; 6 wins the tour. Every match value is editable in Admin → Formats & pairings.',
+      detail: 'Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4. 11 points in total; 6 wins the tour. Every match value is editable in Tour settings → Formats & pairings.',
     },
     {
       key: 'pairings',
@@ -70,7 +70,7 @@ export default function SetupPage() {
       ok: snapshot.matches.length > 0,
       detail:
         snapshot.matches.length > 0
-          ? `${snapshot.matches.length} matches are set up across the four days. Captains can change any of them in Admin → Formats & pairings.`
+          ? `${snapshot.matches.length} matches are set up across the four days. Anyone can change them in Tour settings → Formats & pairings.`
           : 'No matches yet.',
     },
     {

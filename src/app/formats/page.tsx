@@ -27,6 +27,11 @@ const RULES: Record<MatchFormat, { how: string; strokes: string }> = {
     how: 'Both players hit, pick the better shot, both play again from there until holed. One score per pair per hole.',
     strokes: 'A combined allowance off both course handicaps, taken as a difference between pairs.',
   },
+  shamble: {
+    how: 'Both players tee off and the pair takes the better drive. From there each player plays their OWN ball to the hole. The lower net of the two counts for the pair.',
+    strokes:
+      'Each player gets their own strokes off their course handicap, as in better ball, because each finishes their own ball.',
+  },
   foursomes: {
     how: 'One ball per pair, alternating shots. One player tees off the odd holes, the other the even holes, and you alternate all the way to the hole.',
     strokes: 'Half of the combined course handicaps, taken as a difference between pairs.',

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 import {
   toCourseRow,
@@ -40,14 +39,13 @@ const TABLES: Record<AdminEntity, { table: string; map: (v: never) => Record<str
   fines: { table: 'fines', map: toFineRow as (v: never) => Record<string, unknown> },
 };
 
+/**
+ * There is no PIN and no permission level: the tour is private because the
+ * link is. What still protects the data is that this route can only touch a
+ * fixed allow-list of tables and columns, via the same mappers the reader
+ * uses — so a malformed request cannot reach anything it should not.
+ */
 async function guard() {
-  const session = await getSession();
-  if (isPinRequired() && !session?.isAdmin) {
-    return NextResponse.json(
-      { error: 'Admin PIN required. Sign in again with the captains’ PIN.' },
-      { status: 403 },
-    );
-  }
   const supabase = getServiceSupabase();
   if (!supabase) {
     return NextResponse.json({ error: 'The database is not configured.' }, { status: 503 });

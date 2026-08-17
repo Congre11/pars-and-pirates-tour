@@ -296,6 +296,18 @@ export class SupabaseTourStore implements TourStore {
     }
   }
 
+  async saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void> {
+    const response = await fetch('/api/matchups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sides }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(body.error ?? 'Could not save the matchups');
+    }
+  }
+
   async update<K extends AdminEntity>(
     entity: K,
     id: string,

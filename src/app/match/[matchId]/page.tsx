@@ -40,6 +40,8 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
   // the choice separate from the suggestion avoids syncing state in an effect.
   const [chosenHole, setChosenHole] = useState<number | null>(null);
   const [showCard, setShowCard] = useState(false);
+  /** Deliberately reopened a hole the match has already moved past. */
+  const [correcting, setCorrecting] = useState(false);
   const holeStripRef = useRef<HTMLDivElement>(null);
 
   const suggestedHole = useMemo(() => {
@@ -76,15 +78,17 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
   const sides = sidesForMatch(match.id);
   const hole = outcome.holes.find((h) => h.holeNo === activeHole);
 
-  // Locking: a hole is closed once the match has moved past it. Admins are
-  // never locked out, which is how score corrections get made.
+  // Locking: a hole is closed once the match has moved past it. This is a
+  // guard against a stray tap in a pocket, not a permission — anyone can
+  // correct a hole by tapping "Correct this hole" first, which makes the edit
+  // deliberate rather than accidental.
   const furthestScored = outcome.holes.reduce(
     (max, h) => (h.complete ? Math.max(max, h.holeNo) : max),
     0,
   );
   const locked =
     snapshot.tour.settings.lockCompletedHoles &&
-    !session?.isAdmin &&
+    !correcting &&
     hole != null &&
     hole.complete &&
     hole.holeNo < furthestScored;
@@ -259,6 +263,15 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
               </button>
             </div>
           </div>
+
+          {locked && (
+            <button
+              onClick={() => setCorrecting(true)}
+              className="btn-ghost w-full !py-2 text-xs"
+            >
+              This hole is closed — tap to correct it
+            </button>
+          )}
 
           <ScoreEntry
             match={match}

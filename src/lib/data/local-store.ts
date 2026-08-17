@@ -183,6 +183,15 @@ export class LocalTourStore implements TourStore {
     this.commit(next);
   }
 
+  async saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void> {
+    const next = cloneSnapshot(this.snapshot);
+    const byId = new Map(sides.map((s) => [s.id, s.playerIds]));
+    next.sides = next.sides.map((side) =>
+      byId.has(side.id) ? { ...side, playerIds: [...byId.get(side.id)!] } : side,
+    );
+    this.commit(next);
+  }
+
   async update<K extends AdminEntity>(
     entity: K,
     id: string,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
+import { getSession } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 import { toGroupRow } from '@/lib/data/mappers';
 
@@ -18,20 +18,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
  * Save a round's 4-balls.
  *
- * The deliberate difference from `/api/admin/entity`: this route requires a
- * signed-in session but NOT an admin one. Any player on the tour may rearrange
- * who walks with whom, while the competitive structure (matches, pairings,
- * points) stays behind the admin PIN.
+ * Open to everyone, like the rest of the app.
  *
  * The whole set for a round is written at once. Groups only make sense
  * together — moving a player out of one always moves them into another — so a
  * partial write could leave someone in both groups or in neither.
  */
 export async function POST(request: Request) {
+  // No gate: every player may rearrange the 4-balls. The session is read only
+  // to attribute the change to a name.
   const session = await getSession();
-  if (isPinRequired() && !session) {
-    return NextResponse.json({ error: 'Not signed in to this tour.' }, { status: 401 });
-  }
 
   const supabase = getServiceSupabase();
   if (!supabase) {

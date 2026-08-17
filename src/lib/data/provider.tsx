@@ -72,8 +72,10 @@ export interface TourContextValue {
   matchById: (id: string) => Match | undefined;
   /** The 4-balls for a round — who walks together, not who plays whom. */
   groupsForRound: (roundId: string) => RoundGroup[];
-  /** Save a round's 4-balls. Open to any signed-in player, not admin-only. */
+  /** Save a round's 4-balls. Open to everyone. */
   saveGroups: (input: SaveGroupsInput) => Promise<void>;
+  /** Save who is playing whom. Open to everyone; only touches side line-ups. */
+  saveMatchups: (sides: Array<{ id: string; playerIds: string[] }>) => Promise<void>;
   matchesForRound: (roundId: string) => Match[];
   sidesForMatch: (matchId: string) => MatchSide[];
   teesForCourse: (courseId: string) => Tee[];
@@ -127,6 +129,7 @@ function emptySnapshot(): TourSnapshot {
           better_ball: { weights: [0.9], rounding: 'nearest' },
           singles: { weights: [1], rounding: 'nearest' },
           two_man_scramble: { weights: [0.35, 0.15], rounding: 'nearest' },
+          shamble: { weights: [0.9], rounding: 'nearest' },
           foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
         },
       },
@@ -311,6 +314,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const saveMatchups = useCallback(
+    (sides: Array<{ id: string; playerIds: string[] }>) =>
+      store.saveMatchups(sides).catch((err: Error) => {
+        setLastError(err.message);
+        throw err;
+      }),
+    [store],
+  );
+
   const update = useCallback(
     <K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]) =>
       store.update(entity, id, patch).catch((err: Error) => {
@@ -475,6 +487,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       matchById: (id) => indexes.matches.get(id),
       groupsForRound: (roundId) => indexes.groupsByRound.get(roundId) ?? [],
       saveGroups,
+      saveMatchups,
       matchesForRound: (roundId) => indexes.matchesByRound.get(roundId) ?? [],
       sidesForMatch: (matchId) => indexes.sidesByMatch.get(matchId) ?? [],
       outcomes,
@@ -505,6 +518,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       standingsForRound,
       setScore,
       saveGroups,
+      saveMatchups,
       update,
       insert,
       remove,

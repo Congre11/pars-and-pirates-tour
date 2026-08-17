@@ -4,15 +4,15 @@ import { cookies } from 'next/headers';
 import type { Session } from '@/lib/types';
 
 /**
- * Lightweight private-tour access.
+ * Who is using this phone.
  *
- * There is no public sign-up and no password. Everyone types the tour PIN once
- * and picks their name; captains type the admin PIN instead. The result is a
- * signed, httpOnly cookie that the write API routes check before touching the
- * database.
+ * There are no PINs and no permission levels. The tour is private because the
+ * Vercel link is private; anyone who has it can open the app and use every
+ * part of it. All this stores is the player's name, so a score or a change to
+ * the 4-balls can say who made it.
  *
- * The cookie is signed with HMAC-SHA256 so it cannot be edited by hand to
- * award yourself admin.
+ * The cookie is still signed so a name cannot be forged by hand-editing it,
+ * which keeps the audit trail honest — but nothing is gated on it.
  */
 
 export const SESSION_COOKIE = 'pnp_session';
@@ -21,10 +21,10 @@ const SESSION_TTL_DAYS = 60;
 function getSecret(): string {
   return (
     process.env.SESSION_SECRET ||
-    // Falls back to the PINs so the app still works if someone forgets to set
-    // SESSION_SECRET. Weaker, but never insecure-by-silence: /api/config
-    // reports it so Admin can show a warning.
-    `${process.env.TOUR_PIN ?? ''}:${process.env.ADMIN_PIN ?? ''}:pars-and-pirates`
+    // The cookie only carries a display name, so a default keeps the app
+    // working without configuration. /api/config still reports whether a real
+    // secret is set.
+    'pars-and-pirates-unsigned'
   );
 }
 
@@ -103,25 +103,3 @@ export function sessionCookieOptions() {
   };
 }
 
-/**
- * Whether a PIN is required at all.
- *
- * In demo mode (no Supabase) there is nothing on a server to protect — the
- * data lives in your own browser — so the PIN gate is skipped and people just
- * pick their name.
- */
-export function isPinRequired(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-export function checkPin(pin: string): { ok: boolean; isAdmin: boolean } {
-  const tourPin = process.env.TOUR_PIN?.trim();
-  const adminPin = process.env.ADMIN_PIN?.trim();
-  const supplied = pin.trim();
-
-  if (adminPin && safeEqual(supplied, adminPin)) return { ok: true, isAdmin: true };
-  if (tourPin && safeEqual(supplied, tourPin)) return { ok: true, isAdmin: false };
-  // No PIN configured at all: let people in but never as admin.
-  if (!tourPin && !adminPin) return { ok: true, isAdmin: false };
-  return { ok: false, isAdmin: false };
-}

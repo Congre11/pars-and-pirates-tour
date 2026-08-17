@@ -48,12 +48,25 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
 
   return (
     <div className="space-y-4 pb-6">
-      <PageHeader title={course.name} subtitle={course.location} back="" />
+      <PageHeader
+        title={course.name}
+        subtitle={
+          course.routing ? (
+            <>
+              {course.location}
+              <span className="block text-brass-300">{course.routing}</span>
+            </>
+          ) : (
+            course.location
+          )
+        }
+        back=""
+      />
 
       {!course.dataVerified && (
         <Warning href="/admin/courses">
           Placeholder card. The par, stroke index, yardage and rating below have not been checked
-          against the real scorecard yet — enter them in Admin → Courses.
+          against the real scorecard yet — enter them in Tour settings → Courses.
         </Warning>
       )}
 
@@ -115,8 +128,18 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <div className="card overflow-x-auto">
           <table className="tabular w-full min-w-[34rem] text-center text-sm">
             <tbody>
-              <NineBlock label="Out" holes={front} teeId={activeTee?.id} />
-              <NineBlock label="In" holes={back} teeId={activeTee?.id} />
+              {/* Named loops where the club has several, so the card matches
+                  the routing actually being played. */}
+              <NineBlock
+                label={course.nineNames?.[0] ? `Out · ${course.nineNames[0]}` : 'Out'}
+                holes={front}
+                teeId={activeTee?.id}
+              />
+              <NineBlock
+                label={course.nineNames?.[1] ? `In · ${course.nineNames[1]}` : 'In'}
+                holes={back}
+                teeId={activeTee?.id}
+              />
               <tr className="border-t border-white/12 text-xs font-bold">
                 <td className="sticky left-0 bg-ink-900 px-2 py-2.5 text-left">TOTAL</td>
                 <td colSpan={10} className="px-2 py-2.5 text-left">
@@ -144,7 +167,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         </a>
       ) : (
         <p className="text-center text-xs text-chalk-500">
-          No official scorecard link stored. A captain can add one in Admin → Courses.
+          No official scorecard link stored. Add one in Tour settings → Courses.
         </p>
       )}
 

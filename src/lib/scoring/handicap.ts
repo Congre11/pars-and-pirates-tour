@@ -194,5 +194,7 @@ export function computeMatchHandicaps(
 
 /** Formats where each player carries their own strokes. */
 export function isPerPlayerFormat(format: MatchFormat): boolean {
-  return format === 'singles' || format === 'better_ball';
+  // A shamble shares a drive but each player finishes their own ball, so the
+  // strokes are carried per player exactly as in better ball.
+  return format === 'singles' || format === 'better_ball' || format === 'shamble';
 }

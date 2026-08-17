@@ -155,31 +155,30 @@ export default function FinesPage() {
                     <span className="block truncate text-xs text-chalk-500">{player?.name}</span>
                   </span>
                   <span className="tabular shrink-0 font-bold text-brass-400">{fine.amount}</span>
-                  {session?.isAdmin && (
-                    <span className="flex shrink-0 gap-1">
-                      <button
-                        onClick={() =>
-                          update('fines', fine.id, {
-                            status: fine.status === 'paid' ? 'open' : 'paid',
-                          })
-                        }
-                        className={`tap rounded-md px-2 py-1 text-[0.65rem] font-bold ${
-                          fine.status === 'paid'
-                            ? 'bg-fairway-500 text-white'
-                            : 'bg-white/8 text-chalk-400'
-                        }`}
-                      >
-                        PAID
-                      </button>
-                      <button
-                        onClick={() => remove('fines', fine.id)}
-                        className="tap rounded-md bg-white/8 px-2 py-1 text-[0.65rem] font-bold text-chalk-400"
-                        aria-label="Delete fine"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
+                  {/* No PINs anywhere: anyone can settle or clear a fine. */}
+                  <span className="flex shrink-0 gap-1">
+                    <button
+                      onClick={() =>
+                        update('fines', fine.id, {
+                          status: fine.status === 'paid' ? 'open' : 'paid',
+                        })
+                      }
+                      className={`tap rounded-md px-2 py-1 text-[0.65rem] font-bold ${
+                        fine.status === 'paid'
+                          ? 'bg-fairway-500 text-white'
+                          : 'bg-white/8 text-chalk-400'
+                      }`}
+                    >
+                      PAID
+                    </button>
+                    <button
+                      onClick={() => remove('fines', fine.id)}
+                      className="tap rounded-md bg-white/8 px-2 py-1 text-[0.65rem] font-bold text-chalk-400"
+                      aria-label="Delete fine"
+                    >
+                      ✕
+                    </button>
+                  </span>
                 </div>
               );
             })}

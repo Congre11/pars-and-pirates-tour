@@ -151,7 +151,7 @@ export default function ItineraryPage() {
       <p className="pt-2 text-center text-xs text-chalk-500">
         Anything wrong or missing? Captains can edit every entry in{' '}
         <Link href="/admin/itinerary" className="text-fairway-300">
-          Admin → Itinerary
+          Tour settings → Itinerary
         </Link>
         .
       </p>

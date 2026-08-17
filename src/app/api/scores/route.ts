@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession, isPinRequired } from '@/lib/auth/session';
+import { getSession } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -19,16 +19,13 @@ interface ScoreBody {
 /**
  * The live scoring write path.
  *
- * Every phone posts here. The route checks the tour cookie, then calls the
- * `set_score` Postgres function, which upserts the score and appends to the
- * audit trail in one transaction. Supabase Realtime then pushes the change to
+ * Every phone posts here. The route calls the `set_score` Postgres function,
+ * which upserts the score and appends to the audit trail in one transaction. Supabase Realtime then pushes the change to
  * every other open phone.
  */
 export async function POST(request: Request) {
+  // Anyone on the tour may enter a score; the session is only for attribution.
   const session = await getSession();
-  if (isPinRequired() && !session) {
-    return NextResponse.json({ error: 'Not signed in to this tour.' }, { status: 401 });
-  }
 
   const supabase = getServiceSupabase();
   if (!supabase) {
@@ -59,7 +56,10 @@ export async function POST(request: Request) {
 
   // Admins can overwrite anything; everyone else is subject to the optimistic
   // check, which is what stops two scorers silently clobbering each other.
-  const expectedUpdatedAt = session?.isAdmin ? null : (body.expectedUpdatedAt ?? null);
+  // The device sends the `updated_at` it last saw, so a second person editing
+  // the same hole is told rather than silently overwritten. A deliberate
+  // correction sends null to force the write through.
+  const expectedUpdatedAt = body.expectedUpdatedAt ?? null;
 
   const { data, error } = await supabase.rpc('set_score', {
     p_match_id: matchId,
