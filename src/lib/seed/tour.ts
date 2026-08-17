@@ -47,18 +47,30 @@ interface SeedPlayer {
   nickname: string | null;
   team: 'pars' | 'pirates';
   isCaptain: boolean;
+  /**
+   * Current HNA Handicap Index, supplied by the organiser and entered by hand.
+   * This is an INDEX, not a course handicap — the engine converts it per course
+   * and tee via the WHS formula, then applies the format allowance.
+   */
+  handicapIndex: number;
 }
 
 const SEED_PLAYERS: SeedPlayer[] = [
-  { key: 'jason-dunbar', name: 'Jason Dunbar', nickname: 'Skipper', team: 'pars', isCaptain: true },
-  { key: 'alan-hector', name: 'Alan Hector', nickname: null, team: 'pars', isCaptain: false },
-  { key: 'andrew-rushmere', name: 'Andrew Rushmere', nickname: null, team: 'pars', isCaptain: false },
-  { key: 'ryan-dahl', name: 'Ryan Dahl', nickname: null, team: 'pars', isCaptain: false },
-  { key: 'jordy-west', name: 'Jordy West', nickname: 'Cap’n', team: 'pirates', isCaptain: true },
-  { key: 'connor-grealy', name: 'Connor Grealy', nickname: null, team: 'pirates', isCaptain: false },
-  { key: 'nick-georgoulakis', name: 'Nick Georgoulakis', nickname: null, team: 'pirates', isCaptain: false },
-  { key: 'dan-kramer', name: 'Dan Kramer', nickname: null, team: 'pirates', isCaptain: false },
+  { key: 'jason-dunbar', name: 'Jason Dunbar', nickname: 'Skipper', team: 'pars', isCaptain: true, handicapIndex: 11.3 },
+  { key: 'alan-hector', name: 'Alan Hector', nickname: null, team: 'pars', isCaptain: false, handicapIndex: 22.0 },
+  { key: 'andrew-rushmere', name: 'Andrew Rushmere', nickname: null, team: 'pars', isCaptain: false, handicapIndex: 4.0 },
+  { key: 'ryan-dahl', name: 'Ryan Dahl', nickname: null, team: 'pars', isCaptain: false, handicapIndex: 8.8 },
+  { key: 'jordy-west', name: 'Jordy West', nickname: 'Cap’n', team: 'pirates', isCaptain: true, handicapIndex: 9.6 },
+  { key: 'connor-grealy', name: 'Connor Grealy', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 9.3 },
+  { key: 'nick-georgoulakis', name: 'Nick Georgoulakis', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 15.9 },
+  { key: 'dan-kramer', name: 'Dan Kramer', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 15.0 },
 ];
+
+/**
+ * Timestamp stamped on the seeded handicap indexes. Fixed rather than "now" so
+ * re-running the seed generator produces byte-identical SQL.
+ */
+const HANDICAPS_SUPPLIED_AT = '2026-08-17T00:00:00.000Z';
 
 export const PLAYER_IDS: Record<string, string> = Object.fromEntries(
   SEED_PLAYERS.map((p) => [p.key, stableId(`player:${p.key}`)]),
@@ -83,6 +95,11 @@ interface SeedMatch {
   format: Match['format'];
   startHole: number;
   endHole: number;
+  /**
+   * Points at stake in this match. A halved match splits it, so the tour's
+   * 11 points break down as: Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4.
+   */
+  points: number;
   /** Player keys per side; index 0 is The Pars, index 1 is Pin High Pirates. */
   sides: [string[], string[]];
 }
@@ -124,6 +141,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'team_scramble',
         startHole: 1,
         endHole: 18,
+        points: 2,
         sides: [
           ['jason-dunbar', 'alan-hector', 'andrew-rushmere', 'ryan-dahl'],
           ['jordy-west', 'connor-grealy', 'nick-georgoulakis', 'dan-kramer'],
@@ -147,6 +165,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'better_ball',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [
           ['jason-dunbar', 'alan-hector'],
           ['jordy-west', 'connor-grealy'],
@@ -158,6 +177,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'better_ball',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [
           ['andrew-rushmere', 'ryan-dahl'],
           ['nick-georgoulakis', 'dan-kramer'],
@@ -183,6 +203,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 6,
+        points: 0.25,
         sides: [['jason-dunbar'], ['jordy-west']],
       },
       {
@@ -191,6 +212,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 6,
+        points: 0.25,
         sides: [['alan-hector'], ['connor-grealy']],
       },
       {
@@ -199,6 +221,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 6,
+        points: 0.25,
         sides: [['andrew-rushmere'], ['nick-georgoulakis']],
       },
       {
@@ -207,6 +230,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 6,
+        points: 0.25,
         sides: [['ryan-dahl'], ['dan-kramer']],
       },
       // Holes 7-12: two 2-man scrambles.
@@ -216,6 +240,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'two_man_scramble',
         startHole: 7,
         endHole: 12,
+        points: 0.5,
         sides: [
           ['jason-dunbar', 'alan-hector'],
           ['jordy-west', 'connor-grealy'],
@@ -227,6 +252,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'two_man_scramble',
         startHole: 7,
         endHole: 12,
+        points: 0.5,
         sides: [
           ['andrew-rushmere', 'ryan-dahl'],
           ['nick-georgoulakis', 'dan-kramer'],
@@ -239,6 +265,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'foursomes',
         startHole: 13,
         endHole: 18,
+        points: 0.5,
         sides: [
           ['jason-dunbar', 'alan-hector'],
           ['jordy-west', 'connor-grealy'],
@@ -250,6 +277,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'foursomes',
         startHole: 13,
         endHole: 18,
+        points: 0.5,
         sides: [
           ['andrew-rushmere', 'ryan-dahl'],
           ['nick-georgoulakis', 'dan-kramer'],
@@ -274,6 +302,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [['jason-dunbar'], ['jordy-west']],
       },
       {
@@ -282,6 +311,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [['alan-hector'], ['connor-grealy']],
       },
       {
@@ -290,6 +320,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [['andrew-rushmere'], ['nick-georgoulakis']],
       },
       {
@@ -298,6 +329,7 @@ const SEED_ROUNDS: SeedRound[] = [
         format: 'singles',
         startHole: 1,
         endHole: 18,
+        points: 1,
         sides: [['ryan-dahl'], ['dan-kramer']],
       },
     ],
@@ -419,12 +451,13 @@ export function buildSeedSnapshot(): TourSnapshot {
     nickname: p.nickname,
     initials: initialsOf(p.name),
     isCaptain: p.isCaptain,
-    // HNA membership numbers and handicap indexes are listed as "Need" in the
-    // spec. They are null here and are entered in Admin -> Players.
+    // HNA membership numbers are still to be supplied; the handicap indexes
+    // below are the current HNA figures, entered by hand (Admin -> Players
+    // edits them, and records who changed them and when).
     hnaId: null,
-    handicapIndex: null,
+    handicapIndex: p.handicapIndex,
     handicapSource: 'manual',
-    handicapUpdatedAt: null,
+    handicapUpdatedAt: HANDICAPS_SUPPLIED_AT,
     photoUrl: null,
     sortOrder: i,
   }));
@@ -446,6 +479,10 @@ export function buildSeedSnapshot(): TourSnapshot {
       sourceUrl: seedCourse.sourceUrl,
       notes: seedCourse.notes,
       dataVerified: seedCourse.dataVerified,
+      verifiedAt: null,
+      verifiedBy: null,
+      sourceNotes: null,
+      scorecardImageId: null,
     });
 
     for (const seedTee of seedCourse.tees) {
@@ -462,6 +499,7 @@ export function buildSeedSnapshot(): TourSnapshot {
         // Derived from the holes rather than taken from the tee definition, so
         // the total on the course card can never contradict the card itself.
         yardage: seedCourse.holes.reduce((sum, h) => sum + (h.yardages[seedTee.key] ?? 0), 0),
+        distanceUnit: 'yards',
       });
     }
 
@@ -517,7 +555,7 @@ export function buildSeedSnapshot(): TourSnapshot {
         format: seedMatch.format,
         startHole: seedMatch.startHole,
         endHole: seedMatch.endHole,
-        pointsValue: DEFAULT_TOUR_SETTINGS.pointsPerWin,
+        pointsValue: seedMatch.points,
         status: 'upcoming',
         sortOrder: matchIndex,
       });

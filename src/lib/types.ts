@@ -180,6 +180,9 @@ export interface Player {
   sortOrder: number;
 }
 
+/** Whether hole distances are recorded in yards or metres. */
+export type DistanceUnit = 'yards' | 'metres';
+
 export interface Tee {
   id: string;
   courseId: string;
@@ -189,6 +192,8 @@ export interface Tee {
   slopeRating: number;
   par: number;
   yardage: number | null;
+  /** European cards are often in metres; this keeps the label honest. */
+  distanceUnit: DistanceUnit;
 }
 
 export interface Hole {
@@ -213,8 +218,29 @@ export interface Course {
   /**
    * False until a human has checked the par / stroke index / rating data
    * against the real scorecard. The app shows a warning while this is false.
+   * Only ever set to true by an explicit "Mark course as verified" action —
+   * never automatically, and never by the scorecard photo extractor.
    */
   dataVerified: boolean;
+  /** When the course was verified, and by whom. */
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  /** Where the data came from: "photo of the card at the pro shop", etc. */
+  sourceNotes: string | null;
+  /** The most recently uploaded scorecard photo, kept for reference. */
+  scorecardImageId: string | null;
+}
+
+/** An uploaded photo of an official scorecard, kept against the course. */
+export interface CourseScorecardImage {
+  id: string;
+  courseId: string;
+  /** Data URL (`data:image/jpeg;base64,...`). Downscaled before upload. */
+  imageData: string;
+  mimeType: string;
+  uploadedBy: string;
+  notes: string | null;
+  createdAt: string;
 }
 
 export type RoundStatus = 'upcoming' | 'live' | 'complete';

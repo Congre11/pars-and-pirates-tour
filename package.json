@@ -14,6 +14,7 @@
     "seed:sql": "tsx scripts/generate-seed-sql.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@supabase/supabase-js": "^2.112.3",
     "next": "16.3.1",
     "react": "19.2.8",

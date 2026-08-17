@@ -40,23 +40,29 @@ export default function SetupPage() {
       ok: missingHandicaps === 0,
       detail:
         missingHandicaps === 0
-          ? 'All players have a handicap index.'
+          ? `All ${snapshot.players.length} players have a handicap index. These are indexes, not course handicaps — the app converts them per course and tee.`
           : `${missingHandicaps} of ${snapshot.players.length} players still need one. Until then they are scored off scratch. Admin → Players.`,
     },
     {
       key: 'courses',
-      label: 'Course scorecards',
+      label: 'Course scorecards verified',
       ok: unverifiedCourses === 0,
       detail:
         unverifiedCourses === 0
           ? 'All four courses have been checked against the real scorecard.'
-          : `${unverifiedCourses} course(s) still use placeholder par / stroke index / rating data. Admin → Courses.`,
+          : `${unverifiedCourses} course(s) still use placeholder par / stroke index / rating data. Photograph the real card the evening before: Admin → Courses → Verify with a scorecard photo.`,
     },
     {
       key: 'tees',
       label: 'Tees chosen',
       ok: snapshot.rounds.every((r) => Boolean(r.teeId)),
       detail: 'Each round has a tee selected. Change them in Admin → Rounds.',
+    },
+    {
+      key: 'points',
+      label: 'Tournament points',
+      ok: true,
+      detail: 'Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4. 11 points in total; 6 wins the tour. Every match value is editable in Admin → Pairings.',
     },
     {
       key: 'pairings',

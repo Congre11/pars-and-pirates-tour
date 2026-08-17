@@ -63,7 +63,7 @@ const parts: string[] = [
   '-- Regenerate with: npm run seed:sql',
   '-- Source of truth: src/lib/seed/tour.ts and src/lib/seed/courses.ts',
   '--',
-  '-- Run this AFTER supabase/migrations/0001_init.sql.',
+  '-- Run this AFTER supabase/migrations/0001_init.sql and 0002_course_verification.sql.',
   '-- Safe to re-run: it updates the seeded rows in place and never touches',
   '-- the scores table, so you will not lose live scoring by re-seeding.',
   '-- ===========================================================================',
@@ -142,6 +142,9 @@ parts.push(
       source_url: course.sourceUrl,
       notes: course.notes,
       data_verified: course.dataVerified,
+      verified_at: course.verifiedAt,
+      verified_by: course.verifiedBy,
+      source_notes: course.sourceNotes,
     })),
   ),
 );
@@ -158,6 +161,7 @@ parts.push(
       slope_rating: tee.slopeRating,
       par: tee.par,
       yardage: tee.yardage,
+      distance_unit: tee.distanceUnit,
     })),
   ),
 );
@@ -249,7 +253,7 @@ parts.push(
 parts.push('commit;', '');
 parts.push(
   '-- Sanity check — should report 2 teams, 8 players, 4 courses, 72 holes,',
-  '-- 4 rounds and 15 matches.',
+  '-- 4 rounds and 15 matches (worth 11 points in total).',
   "select 'teams' as entity, count(*) from teams",
   "union all select 'players', count(*) from players",
   "union all select 'courses', count(*) from courses",

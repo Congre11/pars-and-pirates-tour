@@ -68,6 +68,15 @@ export async function GET() {
         : 'Not set. Add SESSION_SECRET (a long random string) before the tour.',
     },
     {
+      key: 'scorecard_reader',
+      label: 'Scorecard photo reading',
+      ok: Boolean(process.env.ANTHROPIC_API_KEY),
+      detail: process.env.ANTHROPIC_API_KEY
+        ? 'On. Photograph a course scorecard and the app reads it into editable fields for you to check.'
+        : 'Not set. Add ANTHROPIC_API_KEY to read scorecard photos automatically. Without it you type the course data in by hand, which works exactly the same.',
+      optional: true,
+    },
+    {
       key: 'hna',
       label: 'HNA handicap sync',
       ok: hnaStatus().configured,

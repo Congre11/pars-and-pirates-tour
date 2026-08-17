@@ -4,7 +4,9 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useTour } from '@/lib/data/provider';
 import { MatchTile } from '@/components/MatchTile';
+import { StrokesTable } from '@/components/StrokesTable';
 import { EmptyState, PageHeader, SectionTitle, Warning } from '@/components/ui';
+import { useSession } from '@/lib/auth/session-provider';
 import { formatDate, points as fmtPoints } from '@/lib/format';
 import { FORMAT_LABELS } from '@/lib/types';
 
@@ -26,6 +28,7 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
     standingsForRound,
     snapshot,
   } = useTour();
+  const { session } = useSession();
 
   const round = roundById(roundId);
   if (!round) {
@@ -89,11 +92,27 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
         </Link>
       )}
 
+      {/* --- Start scoring: opens this round's linked scorecard directly --- */}
+      {matches.length > 0 && (
+        <Link
+          href={`/round/${round.id}/score${session?.playerId ? `?player=${session.playerId}` : ''}`}
+          className="btn-primary w-full text-base"
+        >
+          Start scoring →
+        </Link>
+      )}
+
       {course && !course.dataVerified && (
-        <Warning href="/admin/courses">
-          This course still has placeholder par, stroke index and rating data. Enter the real
-          numbers in Admin before the round.
+        <Warning href={`/admin/courses/${course.id}/verify`}>
+          {course.name} is not verified yet — par, stroke index and ratings are still placeholders.
+          Photograph the real card the evening before and verify it here.
         </Warning>
+      )}
+      {course?.dataVerified && course.verifiedAt && (
+        <p className="rounded-xl border border-fairway-400/30 bg-fairway-500/10 px-3 py-2 text-xs text-fairway-300">
+          ✓ Course verified{course.verifiedBy ? ` by ${course.verifiedBy}` : ''} on{' '}
+          {formatDate(course.verifiedAt.slice(0, 10))}. Course handicaps below are live.
+        </p>
       )}
 
       {/* --- Day score ------------------------------------------------------ */}
@@ -113,6 +132,10 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
       {round.notes && (
         <div className="card px-3.5 py-3 text-sm text-chalk-300">{round.notes}</div>
       )}
+
+      {/* --- Who gets shots, and where -------------------------------------- */}
+      <SectionTitle>Handicaps &amp; strokes</SectionTitle>
+      <StrokesTable round={round} />
 
       {/* --- Matches -------------------------------------------------------- */}
       {matches.length === 0 ? (

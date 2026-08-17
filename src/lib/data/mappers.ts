@@ -138,6 +138,10 @@ export const fromCourseRow = (r: Row): Course => ({
   sourceUrl: nstr(r.source_url),
   notes: nstr(r.notes),
   dataVerified: bool(r.data_verified),
+  verifiedAt: nstr(r.verified_at),
+  verifiedBy: nstr(r.verified_by),
+  sourceNotes: nstr(r.source_notes),
+  scorecardImageId: nstr(r.scorecard_image_id),
 });
 
 export const toCourseRow = (c: Partial<Course>): Row => ({
@@ -148,6 +152,10 @@ export const toCourseRow = (c: Partial<Course>): Row => ({
   ...(c.sourceUrl !== undefined && { source_url: c.sourceUrl }),
   ...(c.notes !== undefined && { notes: c.notes }),
   ...(c.dataVerified !== undefined && { data_verified: c.dataVerified }),
+  ...(c.verifiedAt !== undefined && { verified_at: c.verifiedAt }),
+  ...(c.verifiedBy !== undefined && { verified_by: c.verifiedBy }),
+  ...(c.sourceNotes !== undefined && { source_notes: c.sourceNotes }),
+  ...(c.scorecardImageId !== undefined && { scorecard_image_id: c.scorecardImageId }),
 });
 
 export const fromTeeRow = (r: Row): Tee => ({
@@ -159,6 +167,7 @@ export const fromTeeRow = (r: Row): Tee => ({
   slopeRating: num(r.slope_rating, 113),
   par: num(r.par, 72),
   yardage: nnum(r.yardage),
+  distanceUnit: (str(r.distance_unit, 'yards') as Tee['distanceUnit']) ?? 'yards',
 });
 
 export const toTeeRow = (t: Partial<Tee>): Row => ({
@@ -170,6 +179,7 @@ export const toTeeRow = (t: Partial<Tee>): Row => ({
   ...(t.slopeRating !== undefined && { slope_rating: t.slopeRating }),
   ...(t.par !== undefined && { par: t.par }),
   ...(t.yardage !== undefined && { yardage: t.yardage }),
+  ...(t.distanceUnit !== undefined && { distance_unit: t.distanceUnit }),
 });
 
 export const fromHoleRow = (r: Row): Hole => ({

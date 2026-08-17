@@ -51,16 +51,19 @@ need somewhere to put the app itself so people can open it from a link — that 
 2. Open the file `supabase/migrations/0001_init.sql` from this project.
    Copy **everything** in it and paste it into the box.
 3. Click **Run**. You should see "Success. No rows returned".
-4. Click **New query** again.
-5. Open `supabase/seed.sql`, copy everything, paste, and click **Run**.
+4. Click **New query**, then do the same with
+   `supabase/migrations/0002_course_verification.sql`.
+5. Click **New query** one more time.
+6. Open `supabase/seed.sql`, copy everything, paste, and click **Run**.
    This one prints a small table at the bottom. Check it says:
 
    ```
    teams 2 · players 8 · courses 4 · holes 72 · rounds 4 · matches 15 · itinerary 31
    ```
 
-   That is your whole tour loaded: both teams, all eight players, four golf
-   days, four courses with 18 holes each, and the full eight-day itinerary.
+   That is your whole tour loaded: both teams, all eight players with their
+   handicap indexes, four golf days, four courses with 18 holes each, and the
+   full eight-day itinerary.
 
 ### Step 3 — Copy your keys (2 minutes)
 
@@ -92,7 +95,7 @@ the left menu.
    | `TOUR_PIN` | any number you like, e.g. `1927` — everyone types this |
    | `ADMIN_PIN` | a *different* number, e.g. `2609` — captains only |
    | `SESSION_SECRET` | a long random string (see below) |
-   | `NEXT_PUBLIC_APP_NAME` | `Pars & Pirates Tour` (optional) |
+   | `ANTHROPIC_API_KEY` | optional — lets the app read scorecard photos |
 
    For `SESSION_SECRET`, mash the keyboard for 40+ characters, or use a password
    generator. It does not need to be memorable — you never type it again.
@@ -115,29 +118,53 @@ If something is red, that line tells you exactly which value is missing.
 
 Open **More → Admin** using the **admin PIN** (not the tour PIN).
 
-### 1. Handicap indexes — most important
+### 1. Handicap indexes — already done
 
-**Admin → Players.** Tap each player and type their Handicap Index. Until you do
-this, everyone is scored off scratch and the app warns you on every screen.
+All eight current HNA indexes are already loaded:
+
+| The Pars | | Pin High Pirates | |
+| --- | --- | --- | --- |
+| Jason Dunbar | 11.3 | Jordy West | 9.6 |
+| Andrew Rushmere | 4.0 | Connor Grealy | 9.3 |
+| Alan Hector | 22.0 | Nick Georgoulakis | 15.9 |
+| Ryan Dahl | 8.8 | Dan Kramer | 15.0 |
+
+If any change before the tour, edit them in **Admin → Players**. These are
+handicap *indexes*, not course handicaps — the app works out each player's
+course handicap separately for every course and tee, which is why the numbers
+you see on a scorecard are not the same as the numbers above.
 
 Use a negative number for a plus handicap (type `-1.4` for a player off +1.4).
 
-### 2. Course scorecards — second most important
+### 2. Verify each course — the one job left
 
-**Admin → Courses.** Each of the four courses was seeded with a *made-up but
-sensible* scorecard so the app works out of the box. **These are not the real
-scorecards.**
+Each of the four courses was seeded with a *made-up but sensible* scorecard so
+the app works out of the box. **These are not the real scorecards**, and the app
+says so on every screen until you check them.
 
-For each course, take a photo of the real card at the pro shop (or find it on
-the club's website) and type in the correct **par**, **stroke index** and
-**yardage** for each hole, plus the **course rating** and **slope** for the tee
-you are playing. It takes about two minutes per course.
+**Do this the evening before each round.** It takes a couple of minutes.
 
-The screen warns you if a stroke index is used twice or if the holes do not add
-up to the tee's par, which are the two mistakes people actually make.
+1. Open the round (or **Admin → Courses**) and tap **Verify with a scorecard
+   photo**.
+2. Choose the tee you are playing.
+3. Take a photo of the real card at the pro shop. Lay it flat, fill the frame,
+   and make sure the par, stroke index and distance rows are readable.
+4. Tap **Read the scorecard from this photo**. The app fills the boxes in for
+   you and highlights in amber anything it was unsure about. *Nothing is saved
+   at this point.*
+5. Check every value against the card in your hand and correct anything wrong
+   by typing over it. Pay particular attention to the **stroke index** column —
+   getting one wrong quietly changes who gets a shot on which hole.
+6. The screen lists anything still missing. It will not let you verify while a
+   rating, slope, par or stroke index is absent, a stroke index is used twice,
+   or the holes do not add up to the tee's par.
+7. Press **Confirm & mark course as verified**.
 
-When you are happy, flick **Data verified** on. The warnings disappear across
-the app.
+Every player's course handicap for that round recalculates straight away, the
+warnings disappear, and the photo stays attached to the course for reference.
+
+If the reader is not switched on (no `ANTHROPIC_API_KEY`), everything above
+still works — you upload the photo and type the numbers in yourself.
 
 ### 3. Tees
 
@@ -168,6 +195,11 @@ Do **not** give out the `ADMIN_PIN` except to the captains and the organiser.
 
 ## On the course
 
+- Tap **Start scoring** on the day's round. It opens that course's scorecard
+  already loaded — you never pick a course.
+- On **Day 3** the format changes as you walk: holes 1–6 are singles, 7–12 a
+  two-man scramble, 13–18 alternate shot. The card switches by itself as you
+  move through the holes.
 - Anyone can enter scores. Tap the big number your ball took. That is the whole
   interaction — there is no Save button.
 - The **✕** button means picked up / conceded the hole.
@@ -225,9 +257,15 @@ in typing the admin PIN instead.
 
 **A player's strokes look wrong.**
 Check three things in order: their Handicap Index (Admin → Players), the tee
-selected for that round (Admin → Rounds), and the course's stroke index and
-rating (Admin → Courses). The match screen shows exactly how many shots each
-side is getting.
+selected for that round (Admin → Rounds), and whether the course has been
+verified (Admin → Courses). The round screen has a **Strokes received** table
+showing every player's course handicap and exactly which holes they get a shot
+on; the match screen shows the shots each side gets after the format allowance.
+
+**"Reading photos automatically needs an ANTHROPIC_API_KEY".**
+That feature is optional. Either add the key in Vercel (get one at
+console.anthropic.com) and redeploy, or just type the scorecard in by hand —
+the result is identical.
 
 ---
 
@@ -238,7 +276,7 @@ npm install
 cp .env.example .env.local   # fill in, or leave blank for demo mode
 npm run dev
 
-npm test          # 38 scoring engine tests
+npm test          # 68 tests: scoring engine, points structure, extraction
 npm run typecheck
 npm run lint
 npm run seed:sql  # regenerate supabase/seed.sql after editing src/lib/seed/

@@ -25,6 +25,7 @@ const TEE: Tee = {
   slopeRating: 130,
   par: 72,
   yardage: 6400,
+  distanceUnit: 'yards',
 };
 
 /** A flat par-72 course with stroke indexes 1..18 in hole order. */

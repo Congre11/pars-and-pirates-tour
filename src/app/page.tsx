@@ -89,6 +89,13 @@ export default function HomePage() {
             </div>
 
             <p className="mt-3 text-sm font-medium text-chalk-200">{round.formatLabel}</p>
+            <p className="mt-1 text-xs">
+              {course.dataVerified ? (
+                <span className="text-fairway-300">✓ Scorecard verified</span>
+              ) : (
+                <span className="text-brass-400">⚠ Scorecard not verified yet</span>
+              )}
+            </p>
 
             <div className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-fairway-300">
               Open the live scorecard <span aria-hidden>→</span>
@@ -97,19 +104,13 @@ export default function HomePage() {
         </Link>
       )}
 
-      {/* --- Straight to my match ------------------------------------------ */}
-      {myMatches.length > 0 && (
-        <div className="grid gap-2">
-          {myMatches.map((matchId) => (
-            <Link key={matchId} href={`/match/${matchId}?score=1`} className="btn-primary w-full text-base">
-              Enter scores · {snapshot.matches.find((m) => m.id === matchId)?.name}
-            </Link>
-          ))}
-        </div>
-      )}
-      {myMatches.length === 0 && round && roundMatches.length > 0 && (
-        <Link href={`/round/${round.id}`} className="btn-primary w-full text-base">
-          Enter a score
+      {/* --- Start scoring: opens this round's linked scorecard directly ---- */}
+      {round && roundMatches.length > 0 && (
+        <Link
+          href={`/round/${round.id}/score${session?.playerId ? `?player=${session.playerId}` : ''}`}
+          className="btn-primary w-full text-base"
+        >
+          Start scoring{myMatches.length > 0 ? ' · your card' : ''} →
         </Link>
       )}
 
@@ -123,9 +124,15 @@ export default function HomePage() {
             </Warning>
           )}
           {unverifiedCourses.length > 0 && (
-            <Warning href="/admin/courses">
-              {unverifiedCourses.length} course{unverifiedCourses.length === 1 ? '' : 's'} still
-              have placeholder par / stroke index data. Check them against the real scorecard.
+            <Warning
+              href={
+                round && !courseById(round.courseId)?.dataVerified
+                  ? `/admin/courses/${round.courseId}/verify`
+                  : '/admin/courses'
+              }
+            >
+              {unverifiedCourses.length} course{unverifiedCourses.length === 1 ? '' : 's'} not
+              verified yet. Photograph the real scorecard the evening before and check it here.
             </Warning>
           )}
         </div>

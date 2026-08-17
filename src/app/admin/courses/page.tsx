@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useTour } from '@/lib/data/provider';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { Accordion, NumberField, TextField, ToggleField } from '@/components/admin/fields';
@@ -24,8 +25,8 @@ export default function AdminCoursesPage() {
     <AdminShell title="Courses" subtitle="Par, stroke index, yardage and ratings">
       <Warning>
         Every course was seeded with a plausible but UNVERIFIED card so the app works out of the
-        box. Check each one against the real scorecard, then flick “Data verified” on to clear the
-        warnings across the app.
+        box. The quickest way to fix one is to photograph the real card the evening before —
+        tap a course, then “Verify with a scorecard photo”.
       </Warning>
 
       {snapshot.courses.map((course) => {
@@ -50,11 +51,27 @@ export default function AdminCoursesPage() {
               )
             }
           >
+            <Link href={`/admin/courses/${course.id}/verify`} className="btn-primary w-full text-sm">
+              📷 Verify with a scorecard photo
+            </Link>
+            {course.dataVerified && course.verifiedAt && (
+              <p className="rounded-lg bg-fairway-500/10 px-3 py-2 text-xs text-fairway-300">
+                Verified{course.verifiedBy ? ` by ${course.verifiedBy}` : ''} on{' '}
+                {new Date(course.verifiedAt).toLocaleDateString()}
+                {course.sourceNotes ? ` · ${course.sourceNotes}` : ''}
+              </p>
+            )}
+
             <ToggleField
               label="Data verified"
               value={course.dataVerified}
-              hint="Turn on once you have checked par, stroke index and ratings against the printed card."
-              onSave={(value) => update('courses', course.id, { dataVerified: value })}
+              hint="Set by the verification screen above. Turn it off here if the data turns out to be wrong."
+              onSave={(value) =>
+                update('courses', course.id, {
+                  dataVerified: value,
+                  verifiedAt: value ? new Date().toISOString() : null,
+                })
+              }
             />
 
             {duplicateIndexes.length > 0 && (

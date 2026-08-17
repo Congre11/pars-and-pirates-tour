@@ -5,7 +5,7 @@
 -- Regenerate with: npm run seed:sql
 -- Source of truth: src/lib/seed/tour.ts and src/lib/seed/courses.ts
 --
--- Run this AFTER supabase/migrations/0001_init.sql.
+-- Run this AFTER supabase/migrations/0001_init.sql and 0002_course_verification.sql.
 -- Safe to re-run: it updates the seeded rows in place and never touches
 -- the scores table, so you will not lose live scoring by re-seeding.
 -- ===========================================================================
@@ -40,14 +40,14 @@ on conflict (id) do update set
 ;
 
 insert into players (id, tour_id, team_id, name, nickname, initials, is_captain, hna_id, handicap_index, handicap_source, handicap_updated_at, photo_url, sort_order) values
-  ('6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Jason Dunbar', 'Skipper', 'JD', true, null, null, 'manual', null, null, 0),
-  ('3de9536e-bd46-406c-8dec-ce12a2436a44', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Alan Hector', null, 'AH', false, null, null, 'manual', null, null, 1),
-  ('a9d58c17-2d27-443d-818b-44e3dbd367a5', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Andrew Rushmere', null, 'AR', false, null, null, 'manual', null, null, 2),
-  ('9339dbe8-cae3-4cee-8e39-cedca5102a86', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Ryan Dahl', null, 'RD', false, null, null, 'manual', null, null, 3),
-  ('1a28dd06-c593-4144-812b-a8225ca4191c', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Jordy West', 'Cap’n', 'JW', true, null, null, 'manual', null, null, 4),
-  ('a5145540-14c1-45b6-8a5f-37941b13fb2e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Connor Grealy', null, 'CG', false, null, null, 'manual', null, null, 5),
-  ('d0d7d186-4ba3-421c-8dee-da02904fb2b4', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Nick Georgoulakis', null, 'NG', false, null, null, 'manual', null, null, 6),
-  ('2afb1850-1eb2-487a-82dd-a0e4bcd08fb2', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Dan Kramer', null, 'DK', false, null, null, 'manual', null, null, 7)
+  ('6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Jason Dunbar', 'Skipper', 'JD', true, null, 11.3, 'manual', '2026-08-17T00:00:00.000Z', null, 0),
+  ('3de9536e-bd46-406c-8dec-ce12a2436a44', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Alan Hector', null, 'AH', false, null, 22, 'manual', '2026-08-17T00:00:00.000Z', null, 1),
+  ('a9d58c17-2d27-443d-818b-44e3dbd367a5', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Andrew Rushmere', null, 'AR', false, null, 4, 'manual', '2026-08-17T00:00:00.000Z', null, 2),
+  ('9339dbe8-cae3-4cee-8e39-cedca5102a86', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Ryan Dahl', null, 'RD', false, null, 8.8, 'manual', '2026-08-17T00:00:00.000Z', null, 3),
+  ('1a28dd06-c593-4144-812b-a8225ca4191c', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Jordy West', 'Cap’n', 'JW', true, null, 9.6, 'manual', '2026-08-17T00:00:00.000Z', null, 4),
+  ('a5145540-14c1-45b6-8a5f-37941b13fb2e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Connor Grealy', null, 'CG', false, null, 9.3, 'manual', '2026-08-17T00:00:00.000Z', null, 5),
+  ('d0d7d186-4ba3-421c-8dee-da02904fb2b4', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Nick Georgoulakis', null, 'NG', false, null, 15.9, 'manual', '2026-08-17T00:00:00.000Z', null, 6),
+  ('2afb1850-1eb2-487a-82dd-a0e4bcd08fb2', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Dan Kramer', null, 'DK', false, null, 15, 'manual', '2026-08-17T00:00:00.000Z', null, 7)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
   team_id = excluded.team_id,
@@ -63,33 +63,36 @@ on conflict (id) do update set
   sort_order = excluded.sort_order
 ;
 
-insert into courses (id, tour_id, name, location, source_url, notes, data_verified) values
-  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo Course', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — 4-man Team Scramble. Tee times 11:00.', false),
-  ('b53cfe96-8326-4678-8796-7aa2ac0112c0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Carya Golf Course', 'Carya Golf Club, Belek, Turkey', null, 'Day 2 — Better Ball Match Play. Twilight tee time 18:27, floodlit finish.', false),
-  ('e17d413e-7ca8-4498-8928-c142e15860f0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'PGA Sultan', 'Antalya Golf Club, Belek, Turkey', null, 'Day 3 — one course, three six-hole matches: H1-6 Singles, H7-12 Two-man Scramble, H13-18 Alternate Shot.', false),
-  ('265c5394-11e7-47d2-8ebd-ac38dc39670a', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Montgomerie Maxx Royal', 'Montgomerie Maxx Royal, Belek, Turkey', null, 'Day 4 — Singles Match Play. Four concurrent matches. Trophy presented after the round.', false)
+insert into courses (id, tour_id, name, location, source_url, notes, data_verified, verified_at, verified_by, source_notes) values
+  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo Course', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — 4-man Team Scramble. Tee times 11:00.', false, null, null, null),
+  ('b53cfe96-8326-4678-8796-7aa2ac0112c0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Carya Golf Course', 'Carya Golf Club, Belek, Turkey', null, 'Day 2 — Better Ball Match Play. Twilight tee time 18:27, floodlit finish.', false, null, null, null),
+  ('e17d413e-7ca8-4498-8928-c142e15860f0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'PGA Sultan', 'Antalya Golf Club, Belek, Turkey', null, 'Day 3 — one course, three six-hole matches: H1-6 Singles, H7-12 Two-man Scramble, H13-18 Alternate Shot.', false, null, null, null),
+  ('265c5394-11e7-47d2-8ebd-ac38dc39670a', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Montgomerie Maxx Royal', 'Montgomerie Maxx Royal, Belek, Turkey', null, 'Day 4 — Singles Match Play. Four concurrent matches. Trophy presented after the round.', false, null, null, null)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
   name = excluded.name,
   location = excluded.location,
   source_url = excluded.source_url,
   notes = excluded.notes,
-  data_verified = excluded.data_verified
+  data_verified = excluded.data_verified,
+  verified_at = excluded.verified_at,
+  verified_by = excluded.verified_by,
+  source_notes = excluded.source_notes
 ;
 
-insert into tees (id, course_id, name, colour, course_rating, slope_rating, par, yardage) values
-  ('44db96c6-e087-43ac-8e02-b372f14543d4', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'White', '#e8e8e8', 72.4, 137, 71, 6825),
-  ('8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'Yellow', '#f2c53d', 70.8, 131, 71, 6338),
-  ('29f2593c-1b4a-4b22-855f-c1908913156a', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'Red', '#d9414a', 68.2, 124, 71, 5530),
-  ('e432b9d4-d0b2-4722-8b88-6800a54f5cda', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'White', '#e8e8e8', 73.1, 139, 72, 7081),
-  ('9f42c02f-b37a-414d-8d6a-d4430318e655', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'Yellow', '#f2c53d', 71.3, 132, 72, 6565),
-  ('74ca1b6a-373a-4da0-8ece-57ee238761d8', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'Red', '#d9414a', 69, 125, 72, 5702),
-  ('ca93d61e-5fd9-4134-8fe6-8c82f603afbc', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'White', '#e8e8e8', 73.6, 141, 71, 7075),
-  ('5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'Yellow', '#f2c53d', 71.6, 133, 71, 6622),
-  ('eda2b8b4-9d58-44ca-8d0f-1c009785b512', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'Red', '#d9414a', 69.4, 126, 71, 5710),
-  ('62c36476-68f9-4a48-871e-6e1a65cbd890', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'White', '#e8e8e8', 73, 138, 72, 7044),
-  ('6da36679-2241-4d5b-88fe-e7952820ff33', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'Yellow', '#f2c53d', 71.1, 130, 72, 6512),
-  ('cf378c0c-2473-45d6-8ddf-fc182142009e', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'Red', '#d9414a', 68.8, 123, 72, 5668)
+insert into tees (id, course_id, name, colour, course_rating, slope_rating, par, yardage, distance_unit) values
+  ('44db96c6-e087-43ac-8e02-b372f14543d4', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'White', '#e8e8e8', 72.4, 137, 71, 6825, 'yards'),
+  ('8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'Yellow', '#f2c53d', 70.8, 131, 71, 6338, 'yards'),
+  ('29f2593c-1b4a-4b22-855f-c1908913156a', 'b494460c-9465-4986-8c5f-04d89a469d5e', 'Red', '#d9414a', 68.2, 124, 71, 5530, 'yards'),
+  ('e432b9d4-d0b2-4722-8b88-6800a54f5cda', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'White', '#e8e8e8', 73.1, 139, 72, 7081, 'yards'),
+  ('9f42c02f-b37a-414d-8d6a-d4430318e655', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'Yellow', '#f2c53d', 71.3, 132, 72, 6565, 'yards'),
+  ('74ca1b6a-373a-4da0-8ece-57ee238761d8', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', 'Red', '#d9414a', 69, 125, 72, 5702, 'yards'),
+  ('ca93d61e-5fd9-4134-8fe6-8c82f603afbc', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'White', '#e8e8e8', 73.6, 141, 71, 7075, 'yards'),
+  ('5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'Yellow', '#f2c53d', 71.6, 133, 71, 6622, 'yards'),
+  ('eda2b8b4-9d58-44ca-8d0f-1c009785b512', 'e17d413e-7ca8-4498-8928-c142e15860f0', 'Red', '#d9414a', 69.4, 126, 71, 5710, 'yards'),
+  ('62c36476-68f9-4a48-871e-6e1a65cbd890', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'White', '#e8e8e8', 73, 138, 72, 7044, 'yards'),
+  ('6da36679-2241-4d5b-88fe-e7952820ff33', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'Yellow', '#f2c53d', 71.1, 130, 72, 6512, 'yards'),
+  ('cf378c0c-2473-45d6-8ddf-fc182142009e', '265c5394-11e7-47d2-8ebd-ac38dc39670a', 'Red', '#d9414a', 68.8, 123, 72, 5668, 'yards')
 on conflict (id) do update set
   course_id = excluded.course_id,
   name = excluded.name,
@@ -97,7 +100,8 @@ on conflict (id) do update set
   course_rating = excluded.course_rating,
   slope_rating = excluded.slope_rating,
   par = excluded.par,
-  yardage = excluded.yardage
+  yardage = excluded.yardage,
+  distance_unit = excluded.distance_unit
 ;
 
 insert into holes (id, course_id, hole_no, par, stroke_index, yardages) values
@@ -201,17 +205,17 @@ on conflict (id) do update set
 ;
 
 insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, status, sort_order) values
-  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 1, 'upcoming', 0),
+  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 2, 'upcoming', 0),
   ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, 'upcoming', 0),
   ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, 'upcoming', 1),
-  ('c72bcb14-7807-47a6-82d3-b7d0988425ce', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 1 (H1–6)', 'singles', 1, 6, 1, 'upcoming', 0),
-  ('ca2bcfcd-7707-4613-85d3-bc899784243b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 2 (H1–6)', 'singles', 1, 6, 1, 'upcoming', 1),
-  ('c92bce3a-7607-4480-84d3-baf6968422a8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 3 (H1–6)', 'singles', 1, 6, 1, 'upcoming', 2),
-  ('c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 4 (H1–6)', 'singles', 1, 6, 1, 'upcoming', 3),
-  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1 (H7–12)', 'two_man_scramble', 7, 12, 1, 'upcoming', 4),
-  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2 (H7–12)', 'two_man_scramble', 7, 12, 1, 'upcoming', 5),
-  ('caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 1 (H13–18)', 'foursomes', 13, 18, 1, 'upcoming', 6),
-  ('c7f7f144-8d37-46ea-83b3-7ee80db2a932', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 2 (H13–18)', 'foursomes', 13, 18, 1, 'upcoming', 7),
+  ('c72bcb14-7807-47a6-82d3-b7d0988425ce', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 1 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 0),
+  ('ca2bcfcd-7707-4613-85d3-bc899784243b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 2 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 1),
+  ('c92bce3a-7607-4480-84d3-baf6968422a8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 3 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 2),
+  ('c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 4 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 3),
+  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1 (H7–12)', 'two_man_scramble', 7, 12, 0.5, 'upcoming', 4),
+  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2 (H7–12)', 'two_man_scramble', 7, 12, 0.5, 'upcoming', 5),
+  ('caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 1 (H13–18)', 'foursomes', 13, 18, 0.5, 'upcoming', 6),
+  ('c7f7f144-8d37-46ea-83b3-7ee80db2a932', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 2 (H13–18)', 'foursomes', 13, 18, 0.5, 'upcoming', 7),
   ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, 'upcoming', 0),
   ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, 'upcoming', 1),
   ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, 'upcoming', 2),
@@ -313,7 +317,7 @@ on conflict (id) do update set
 
 commit;
 -- Sanity check — should report 2 teams, 8 players, 4 courses, 72 holes,
--- 4 rounds and 15 matches.
+-- 4 rounds and 15 matches (worth 11 points in total).
 select 'teams' as entity, count(*) from teams
 union all select 'players', count(*) from players
 union all select 'courses', count(*) from courses
