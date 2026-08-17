@@ -21,6 +21,7 @@ import {
   fromMatchRow,
   fromPlayerRow,
   fromResultRow,
+  fromGroupRow,
   fromRoundRow,
   fromScoreRow,
   fromSideRow,
@@ -36,6 +37,7 @@ import {
   ScoreConflictError,
   type AdminEntity,
   type AdminPatches,
+  type SaveGroupsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -61,6 +63,7 @@ const EMPTY: TourSnapshot = {
   tees: [],
   holes: [],
   rounds: [],
+  groups: [],
   matches: [],
   sides: [],
   scores: [],
@@ -97,6 +100,7 @@ export class SupabaseTourStore implements TourStore {
       tees,
       holes,
       rounds,
+      groups,
       matches,
       sides,
       scores,
@@ -112,6 +116,7 @@ export class SupabaseTourStore implements TourStore {
       supabase.from('tees').select('*'),
       supabase.from('holes').select('*').order('hole_no'),
       supabase.from('rounds').select('*').order('sort_order'),
+      supabase.from('round_groups').select('*').order('sort_order'),
       supabase.from('matches').select('*').order('sort_order'),
       supabase.from('match_sides').select('*').order('sort_order'),
       supabase.from('scores').select('*'),
@@ -129,6 +134,7 @@ export class SupabaseTourStore implements TourStore {
       tees,
       holes,
       rounds,
+      groups,
       matches,
       sides,
       scores,
@@ -153,6 +159,7 @@ export class SupabaseTourStore implements TourStore {
       tees: (tees.data ?? []).map(fromTeeRow),
       holes: (holes.data ?? []).map(fromHoleRow),
       rounds: (rounds.data ?? []).map(fromRoundRow),
+      groups: (groups.data ?? []).map(fromGroupRow),
       matches: (matches.data ?? []).map(fromMatchRow),
       sides: (sides.data ?? []).map(fromSideRow),
       scores: (scores.data ?? []).map(fromScoreRow),
@@ -274,6 +281,18 @@ export class SupabaseTourStore implements TourStore {
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error ?? 'Could not save the score');
+    }
+  }
+
+  async saveGroups(input: SaveGroupsInput): Promise<void> {
+    const response = await fetch('/api/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(body.error ?? 'Could not save the 4-balls');
     }
   }
 

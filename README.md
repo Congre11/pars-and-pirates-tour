@@ -28,9 +28,10 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (96 tests) | `src/lib/**/*.test.ts` |
+| Test suite (123 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
+| 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
 | Seeded tour (players, days, courses, itinerary) | `src/lib/seed/` |
 | Generated SQL seed | `supabase/seed.sql` (`npm run seed:sql`) |
 | Storage layer + realtime + offline queue | `src/lib/data/` |
@@ -43,7 +44,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 96 tests: scoring, points, formats, extraction
+npm test           # 123 tests: scoring, points, formats, 4-balls, extraction
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -66,12 +67,13 @@ read from the match rows rather than hard-coded. Hole strip, one-tap score
 entry, strokes received, net scores, hole winners, running match status and the
 full card.
 **Round / Course** — the day's matches plus the full 18-hole card per tee.
+**4-balls** — who walks round with whom. Editable by every player, no admin PIN.
 **Itinerary** — all eight days; golf days link into that day's scorecards.
 **Formats** — plain-English rules and the exact handicap allowance in force.
 **Teams** — rosters, handicaps, points contributed, leading scorer.
 **Admin** — players, handicaps, courses, tee times, formats & pairings, rules,
-itinerary, score corrections, and the course verification flow below. Protected by a
-separate captains' PIN.
+itinerary, score corrections, and the course verification flow below. Protected
+by the admin PIN.
 **Fines** — the running tab.
 
 ---
@@ -181,6 +183,70 @@ or turning Day 4 into two nine-hole formats, needs no code change. The rules
 themselves live in `src/lib/rounds/format-plan.ts` as pure functions, tested in
 `format-plan.test.ts` against configurations that are nothing like the seeded
 one.
+
+---
+
+## 4-balls vs matches
+
+Two different things, stored in two different tables, on purpose.
+
+| | **4-ball** (`round_groups`) | **Match** (`matches`) |
+| --- | --- | --- |
+| Answers | Who do I walk round with? | Who am I playing against? |
+| Changes | Day to day, often on the first tee | Set before the round by the organiser |
+| Edited by | **Any signed-in player** | Admin PIN only |
+| Where | Round → 4-balls | Admin → Formats & pairings |
+
+They coincide on a better-ball day — one 4-ball is one match — and diverge
+everywhere else. A Day 4 singles 4-ball contains two separate matches. On Day 3
+the group stays together for all 18 holes while the competitive format changes
+three times underneath it. Nothing assumes they line up.
+
+Rules enforced on the 4-ball editor (`src/lib/rounds/four-balls.ts`):
+
+| Reported as | Rule |
+| --- | --- |
+| Error | A player is in more than one 4-ball |
+| Error | A player is in no 4-ball |
+| Error | A 4-ball does not have exactly four players |
+| Warning | A 4-ball is not two from each team |
+
+Neither level blocks saving, but an imperfect grouping requires a second,
+explicit "Save anyway" — the captains occasionally want a lopsided group and
+the app should not argue with them, only make sure it was deliberate.
+
+Tapping a player then another **swaps** them, which is why the editor can never
+pass through a state where a group has three or five players by accident.
+
+---
+
+## Permissions
+
+| | Full admin | Edit 4-balls | Enter scores |
+| --- | --- | --- | --- |
+| Anyone with the **admin PIN** | ✅ | ✅ | ✅ |
+| Any signed-in player (tour PIN) | ❌ | ✅ | ✅ |
+| Not signed in | ❌ | ❌ | ❌ |
+
+**Admin access comes from the `ADMIN_PIN`, not from who you are.** It is not
+tied to being a captain and never has been. Connor Grealy is flagged as the
+organiser (`players.is_organiser`) and Jason Dunbar and Jordy West as captains
+(`players.is_captain`), but those flags are labels shown in the UI — the app
+does not read them to decide access.
+
+That means the admin PIN is a shared secret, not an identity: whoever types it
+is an admin for that session, whatever name they picked. Give it to the
+organiser and the captains only.
+
+Writes are enforced server-side, not in the browser:
+
+- `/api/admin/entity` — requires an **admin** session. Matches, pairings,
+  points, handicaps, courses, itinerary, score corrections.
+- `/api/groups` — requires **any** signed-in session. 4-balls only.
+- `/api/scores` — requires **any** signed-in session. Scores only.
+
+The anon key can only ever `select`, so a leaked key cannot write anything at
+all, whichever route it aims at.
 
 ---
 

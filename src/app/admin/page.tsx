@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession } from '@/lib/auth/session-provider';
 import { useTour } from '@/lib/data/provider';
+import { AdminLocked } from '@/components/admin/AdminShell';
 import { LinkRow, PageHeader, SectionTitle } from '@/components/ui';
 
 /** Admin hub. Every editable part of the tour hangs off here. */
@@ -11,21 +12,7 @@ export default function AdminPage() {
   const { snapshot } = useTour();
 
   if (pinRequired && !session?.isAdmin) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Admin" back="/more" />
-        <div className="card px-4 py-6 text-center">
-          <p className="text-2xl">🔒</p>
-          <p className="mt-2 font-semibold">Captains only</p>
-          <p className="mt-1 text-sm text-chalk-400">
-            Sign out and sign back in using the captains’ admin PIN.
-          </p>
-          <Link href="/more" className="btn-ghost mt-4 w-full">
-            Back
-          </Link>
-        </div>
-      </div>
-    );
+    return <AdminLocked title="Admin" />;
   }
 
   const missingHandicaps = snapshot.players.filter((p) => p.handicapIndex === null).length;
@@ -33,7 +20,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-3 pb-6">
-      <PageHeader title="Admin" back="/more" subtitle="Captains and organiser" />
+      <PageHeader title="Admin" back="/more" subtitle="Organiser & captains" />
 
       <SectionTitle>Before the tour</SectionTitle>
       <div className="space-y-2">

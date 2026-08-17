@@ -47,6 +47,7 @@ function player(id: string, teamId: string, handicapIndex: number | null): Playe
     nickname: null,
     initials: id.slice(0, 2).toUpperCase(),
     isCaptain: false,
+    isOrganiser: false,
     hnaId: null,
     handicapIndex,
     handicapSource: 'manual',

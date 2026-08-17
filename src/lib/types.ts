@@ -169,7 +169,17 @@ export interface Player {
   name: string;
   nickname: string | null;
   initials: string;
+  /** Leads one team's line-up decisions. Nothing to do with app permissions. */
   isCaptain: boolean;
+  /**
+   * Runs the tour and owns the app.
+   *
+   * This is a LABEL, not an access check — admin access is granted by typing
+   * the `ADMIN_PIN` at sign-in, and always has been. It exists so the app can
+   * say who the organiser is without implying that captains are the only
+   * people who may hold the admin PIN.
+   */
+  isOrganiser: boolean;
   /** Handicaps Network Africa membership number. Null until supplied. */
   hnaId: string | null;
   /** WHS Handicap Index. Null means "not yet known" — admin must fill it in. */
@@ -260,6 +270,31 @@ export interface Round {
   status: RoundStatus;
   notes: string | null;
   sortOrder: number;
+}
+
+/**
+ * A 4-ball: who physically walks round together.
+ *
+ * Deliberately NOT the same thing as a `Match`. A 4-ball is the group that tees
+ * off together; a match is who is competing against whom. Sometimes they line
+ * up exactly — a better-ball 4-ball is also one match — and sometimes they do
+ * not: a Day 4 singles 4-ball contains two separate matches, and on Day 3 the
+ * group stays put for 18 holes while the competitive format changes three
+ * times underneath it.
+ *
+ * Keeping them in separate tables is what lets the group be edited by any
+ * player without touching the competitive structure, which is admin-only.
+ */
+export interface RoundGroup {
+  id: string;
+  roundId: string;
+  /** "4-Ball 1". Free text so a group can be renamed. */
+  name: string;
+  playerIds: string[];
+  sortOrder: number;
+  /** Who last changed it, so the round can show "updated by Alan". */
+  updatedBy: string;
+  updatedAt: string;
 }
 
 export type MatchStatusValue = 'upcoming' | 'live' | 'complete';
@@ -418,6 +453,8 @@ export interface TourSnapshot {
   tees: Tee[];
   holes: Hole[];
   rounds: Round[];
+  /** Physical playing groups. Separate from `matches` on purpose. */
+  groups: RoundGroup[];
   matches: Match[];
   sides: MatchSide[];
   scores: Score[];

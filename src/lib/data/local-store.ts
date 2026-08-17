@@ -17,11 +17,12 @@ import {
   upsertById,
   type AdminEntity,
   type AdminPatches,
+  type SaveGroupsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
 } from './store';
-import type { Score, TourSnapshot } from '@/lib/types';
+import type { RoundGroup, Score, TourSnapshot } from '@/lib/types';
 
 const STORAGE_KEY = 'pars-pirates:tour:v1';
 const CHANNEL_NAME = 'pars-pirates:sync';
@@ -160,6 +161,25 @@ export class LocalTourStore implements TourStore {
         : [...next.scores, row];
     }
 
+    this.commit(next);
+  }
+
+  async saveGroups(input: SaveGroupsInput): Promise<void> {
+    const next = cloneSnapshot(this.snapshot);
+    const updatedAt = new Date().toISOString();
+
+    const saved: RoundGroup[] = input.groups.map((group, index) => ({
+      id: group.id ?? randomId(),
+      roundId: input.roundId,
+      name: group.name,
+      playerIds: [...group.playerIds],
+      sortOrder: group.sortOrder ?? index,
+      updatedBy: input.updatedBy,
+      updatedAt,
+    }));
+
+    // Replace this round's set, exactly as the server route does.
+    next.groups = [...next.groups.filter((g) => g.roundId !== input.roundId), ...saved];
     this.commit(next);
   }
 

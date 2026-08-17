@@ -121,6 +121,7 @@ parts.push(
       nickname: player.nickname,
       initials: player.initials,
       is_captain: player.isCaptain,
+      is_organiser: player.isOrganiser,
       hna_id: player.hnaId,
       handicap_index: player.handicapIndex,
       handicap_source: player.handicapSource,
@@ -196,6 +197,21 @@ parts.push(
       status: round.status,
       notes: round.notes,
       sort_order: round.sortOrder,
+    })),
+  ),
+);
+
+parts.push(
+  insert(
+    'round_groups',
+    snapshot.groups.map((group) => ({
+      id: group.id,
+      round_id: group.roundId,
+      name: group.name,
+      player_ids: group.playerIds,
+      sort_order: group.sortOrder,
+      updated_by: group.updatedBy,
+      updated_at: group.updatedAt,
     })),
   ),
 );

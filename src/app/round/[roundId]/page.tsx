@@ -24,6 +24,8 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
     courseById,
     teeById,
     matchesForRound,
+    groupsForRound,
+    playerById,
     holesForCourse,
     standingsForRound,
     snapshot,
@@ -47,6 +49,7 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
   const course = courseById(round.courseId);
   const tee = teeById(round.teeId);
   const matches = matchesForRound(round.id);
+  const fourBalls = groupsForRound(round.id);
   const holes = course ? holesForCourse(course.id) : [];
   const dayStandings = standingsForRound(round.id);
   const [home, away] = snapshot.teams;
@@ -101,6 +104,29 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
           Start scoring →
         </Link>
       )}
+
+      {/* Anyone can rearrange the 4-balls — no admin PIN needed. */}
+      <Link href={`/round/${round.id}/four-balls`} className="card tap block px-3.5 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">4-balls</span>
+            <span className="block truncate text-xs text-chalk-500">
+              {fourBalls.length > 0
+                ? fourBalls
+                    .map((group) =>
+                      group.playerIds
+                        .map((id) => playerById(id)?.name.split(' ')[0] ?? '?')
+                        .join(', '),
+                    )
+                    .join('  ·  ')
+                : 'Not set yet — tap to group the players'}
+            </span>
+          </span>
+          <span className="shrink-0 text-chalk-500" aria-hidden>
+            ›
+          </span>
+        </div>
+      </Link>
 
       {course && !course.dataVerified && (
         <Warning href={`/admin/courses/${course.id}/verify`}>

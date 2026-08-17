@@ -33,7 +33,15 @@ import {
   queueKey,
   type QueuedWrite,
 } from './offline-queue';
-import { ScoreConflictError, type AdminEntity, type AdminPatches, type SetScoreInput, type StoreMode, type TourStore } from './store';
+import {
+  ScoreConflictError,
+  type AdminEntity,
+  type AdminPatches,
+  type SaveGroupsInput,
+  type SetScoreInput,
+  type StoreMode,
+  type TourStore,
+} from './store';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type {
   Course,
@@ -42,6 +50,7 @@ import type {
   MatchSide,
   Player,
   Round,
+  RoundGroup,
   Team,
   Tee,
   TourSnapshot,
@@ -61,6 +70,10 @@ export interface TourContextValue {
   holesForCourse: (courseId: string) => Hole[];
   roundById: (id: string) => Round | undefined;
   matchById: (id: string) => Match | undefined;
+  /** The 4-balls for a round — who walks together, not who plays whom. */
+  groupsForRound: (roundId: string) => RoundGroup[];
+  /** Save a round's 4-balls. Open to any signed-in player, not admin-only. */
+  saveGroups: (input: SaveGroupsInput) => Promise<void>;
   matchesForRound: (roundId: string) => Match[];
   sidesForMatch: (matchId: string) => MatchSide[];
   teesForCourse: (courseId: string) => Tee[];
@@ -124,6 +137,7 @@ function emptySnapshot(): TourSnapshot {
     tees: [],
     holes: [],
     rounds: [],
+    groups: [],
     matches: [],
     sides: [],
     scores: [],
@@ -288,6 +302,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [scorerName, store],
   );
 
+  const saveGroups = useCallback(
+    (input: SaveGroupsInput) =>
+      store.saveGroups(input).catch((err: Error) => {
+        setLastError(err.message);
+        throw err;
+      }),
+    [store],
+  );
+
   const update = useCallback(
     <K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]) =>
       store.update(entity, id, patch).catch((err: Error) => {
@@ -345,6 +368,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
       teesByCourse.set(tee.courseId, list);
     }
 
+    const groupsByRound = new Map<string, RoundGroup[]>();
+    for (const group of snapshot.groups) {
+      const list = groupsByRound.get(group.roundId) ?? [];
+      list.push(group);
+      groupsByRound.set(group.roundId, list);
+    }
+    for (const list of groupsByRound.values()) list.sort((a, b) => a.sortOrder - b.sortOrder);
+
     const matchesByRound = new Map<string, Match[]>();
     for (const match of snapshot.matches) {
       const list = matchesByRound.get(match.roundId) ?? [];
@@ -377,6 +408,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       matches,
       holesByCourse,
       teesByCourse,
+      groupsByRound,
       matchesByRound,
       sidesByMatch,
       scoresByMatch,
@@ -441,6 +473,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
       teesForCourse: (courseId) => indexes.teesByCourse.get(courseId) ?? [],
       roundById: (id) => indexes.rounds.get(id),
       matchById: (id) => indexes.matches.get(id),
+      groupsForRound: (roundId) => indexes.groupsByRound.get(roundId) ?? [],
+      saveGroups,
       matchesForRound: (roundId) => indexes.matchesByRound.get(roundId) ?? [],
       sidesForMatch: (matchId) => indexes.sidesByMatch.get(matchId) ?? [],
       outcomes,
@@ -470,6 +504,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       standings,
       standingsForRound,
       setScore,
+      saveGroups,
       update,
       insert,
       remove,

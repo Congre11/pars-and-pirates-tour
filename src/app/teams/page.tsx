@@ -115,7 +115,18 @@ export default function TeamsPage() {
                         <div className="flex items-center gap-1.5">
                           <span className="truncate font-semibold">{player.name}</span>
                           {player.isCaptain && (
-                            <span className="chip bg-brass-500/25 text-brass-300">C</span>
+                            <span className="chip bg-brass-500/25 text-brass-300" title="Captain">
+                              C
+                            </span>
+                          )}
+                          {/* Separate from captaincy — the organiser runs the tour. */}
+                          {player.isOrganiser && (
+                            <span
+                              className="chip bg-fairway-500/25 text-fairway-300"
+                              title="Organiser"
+                            >
+                              ORG
+                            </span>
                           )}
                         </div>
                         <div className="truncate text-xs text-chalk-500">

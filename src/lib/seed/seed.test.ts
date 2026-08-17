@@ -3,6 +3,7 @@ import { buildSeedSnapshot } from './tour';
 import { computeMatch, computeStandings } from '@/lib/scoring/engine';
 import type { MatchOutcome } from '@/lib/scoring/engine';
 import { describeRoundFormat, planRound } from '@/lib/rounds/format-plan';
+import { checkFourBalls } from '@/lib/rounds/four-balls';
 
 /**
  * Locks the tournament points structure and the supplied handicap indexes.
@@ -247,6 +248,103 @@ describe('rounds link to courses', () => {
       expect(course.dataVerified).toBe(false);
       expect(course.verifiedAt).toBeNull();
     }
+  });
+});
+
+describe('organiser and captains are separate roles', () => {
+  const byName = (name: string) => snapshot.players.find((p) => p.name === name)!;
+
+  it('makes Connor the organiser without making him a captain', () => {
+    const connor = byName('Connor Grealy');
+    expect(connor.isOrganiser).toBe(true);
+    expect(connor.isCaptain).toBe(false);
+  });
+
+  it('keeps Jason and Jordy as captains', () => {
+    expect(byName('Jason Dunbar').isCaptain).toBe(true);
+    expect(byName('Jordy West').isCaptain).toBe(true);
+  });
+
+  it('does not make the captains organisers', () => {
+    expect(byName('Jason Dunbar').isOrganiser).toBe(false);
+    expect(byName('Jordy West').isOrganiser).toBe(false);
+  });
+
+  it('leaves every other player as a normal player', () => {
+    const ordinary = snapshot.players.filter(
+      (p) => !['Connor Grealy', 'Jason Dunbar', 'Jordy West'].includes(p.name),
+    );
+    expect(ordinary).toHaveLength(5);
+    for (const player of ordinary) {
+      expect(player.isCaptain).toBe(false);
+      expect(player.isOrganiser).toBe(false);
+    }
+  });
+
+  it('still points each team at its captain', () => {
+    const pars = snapshot.teams.find((t) => t.name === 'The Pars')!;
+    const pirates = snapshot.teams.find((t) => t.name === 'Pin High Pirates')!;
+    expect(pars.captainPlayerId).toBe(byName('Jason Dunbar').id);
+    expect(pirates.captainPlayerId).toBe(byName('Jordy West').id);
+  });
+});
+
+describe('seeded 4-balls', () => {
+  const roundGroups = (dayNo: number) => {
+    const round = snapshot.rounds.find((r) => r.dayNo === dayNo)!;
+    return snapshot.groups.filter((g) => g.roundId === round.id);
+  };
+
+  it('gives every round two 4-balls of four', () => {
+    for (const round of snapshot.rounds) {
+      const groups = snapshot.groups.filter((g) => g.roundId === round.id);
+      expect(groups, `Day ${round.dayNo}`).toHaveLength(2);
+      for (const group of groups) expect(group.playerIds).toHaveLength(4);
+    }
+  });
+
+  it('passes its own validation: 8 players, no duplicates, 2 and 2', () => {
+    for (const round of snapshot.rounds) {
+      const groups = snapshot.groups
+        .filter((g) => g.roundId === round.id)
+        .map((g) => ({ id: g.id, name: g.name, playerIds: g.playerIds, sortOrder: g.sortOrder }));
+      const check = checkFourBalls(groups, snapshot.players, snapshot.teams);
+      expect(check.issues, `Day ${round.dayNo}`).toEqual([]);
+    }
+  });
+
+  it('seeds the groupings the organiser specified', () => {
+    const name = (id: string) => snapshot.players.find((p) => p.id === id)!.name;
+    const groups = roundGroups(1).sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(groups[0].playerIds.map(name).sort()).toEqual([
+      'Alan Hector',
+      'Connor Grealy',
+      'Jason Dunbar',
+      'Jordy West',
+    ]);
+    expect(groups[1].playerIds.map(name).sort()).toEqual([
+      'Andrew Rushmere',
+      'Dan Kramer',
+      'Nick Georgoulakis',
+      'Ryan Dahl',
+    ]);
+  });
+
+  it('stores 4-balls apart from the competitive matchups', () => {
+    // Day 4 is four singles matches inside two 4-balls: proof that a group is
+    // not a match. If these ever became the same table this would fail.
+    const round = snapshot.rounds.find((r) => r.dayNo === 4)!;
+    const matches = snapshot.matches.filter((m) => m.roundId === round.id);
+    const groups = snapshot.groups.filter((g) => g.roundId === round.id);
+    expect(matches).toHaveLength(4);
+    expect(groups).toHaveLength(2);
+  });
+
+  it('keeps one set of 4-balls across all three Day 3 formats', () => {
+    // The physical group walks 18 holes while the format changes three times.
+    const round = snapshot.rounds.find((r) => r.dayNo === 3)!;
+    expect(snapshot.groups.filter((g) => g.roundId === round.id)).toHaveLength(2);
+    expect(snapshot.matches.filter((m) => m.roundId === round.id)).toHaveLength(8);
   });
 });
 
