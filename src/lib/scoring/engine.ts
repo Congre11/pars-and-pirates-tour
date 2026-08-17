@@ -146,6 +146,7 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
     match.format,
     tee,
     settings,
+    match.allowanceOverride,
   );
 
   const handicaps: Record<string, SideHandicapResult> = {};

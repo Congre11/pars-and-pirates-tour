@@ -28,8 +28,9 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (68 tests) | `src/lib/**/*.test.ts` |
+| Test suite (96 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
+| Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | Seeded tour (players, days, courses, itinerary) | `src/lib/seed/` |
 | Generated SQL seed | `supabase/seed.sql` (`npm run seed:sql`) |
 | Storage layer + realtime + offline queue | `src/lib/data/` |
@@ -42,7 +43,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 68 tests: scoring engine, seeded points, extraction
+npm test           # 96 tests: scoring, points, formats, extraction
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -58,16 +59,18 @@ results.
 **Leaderboard** — overall points, the projected final score, and every match
 grouped by day with live status.
 **Scorecard** — the core screen. "Start Scoring" on any round opens that
-round's linked course card directly; nobody picks a course. On Day 3 the format
-switches as you walk (H1–6 singles → H7–12 scramble → H13–18 alternate shot) off
-one PGA Sultan card. Hole strip, one-tap score entry, strokes received, net
-scores, hole winners, running match status and the full card.
+round's linked course card directly; nobody picks a course. Where a round is
+configured with several formats the card switches as you walk — Day 3 ships as
+H1–6 singles → H7–12 scramble → H13–18 alternate shot off one PGA Sultan card,
+read from the match rows rather than hard-coded. Hole strip, one-tap score
+entry, strokes received, net scores, hole winners, running match status and the
+full card.
 **Round / Course** — the day's matches plus the full 18-hole card per tee.
 **Itinerary** — all eight days; golf days link into that day's scorecards.
 **Formats** — plain-English rules and the exact handicap allowance in force.
 **Teams** — rosters, handicaps, points contributed, leading scorer.
-**Admin** — players, handicaps, courses, tee times, pairings, rules, itinerary,
-score corrections, and the course verification flow below. Protected by a
+**Admin** — players, handicaps, courses, tee times, formats & pairings, rules,
+itinerary, score corrections, and the course verification flow below. Protected by a
 separate captains' PIN.
 **Fines** — the running tab.
 
@@ -87,9 +90,17 @@ separate captains' PIN.
 | 4 | 2 Sep | Montgomerie Maxx Royal | 1–18 | Singles Match Play | 4 | 1 | **4** |
 
 **11 points total; 6 wins the tour.** A halved match splits its value exactly —
-a 0.25-point singles match halved is 0.125 each. Every match's point value is
-editable in **Admin → Pairings**, and `src/lib/seed/seed.test.ts` locks the
-structure so a stray edit fails the build rather than the scoreboard.
+a 0.25-point singles match halved is 0.125 each. `src/lib/seed/seed.test.ts`
+locks the seeded structure so a stray edit to the seed fails the build rather
+than the scoreboard.
+
+**This table is the seeded default, not a fixture.** Day 3's three-format shape
+is eight ordinary match rows, exactly like every other day. In
+**Admin → Formats & pairings** you can change any match's format, first and last
+hole, matchup, points value and handicap allowance, and add or delete matches
+entirely. The live scorecard and the scoring engine read the same rows, so a
+change lands on every phone in seconds without a code change or a deploy. See
+[Reconfiguring a round](#reconfiguring-a-round) below.
 
 ### Handicaps
 
@@ -113,7 +124,8 @@ Players records who changed them and when):
 These are **indexes, not course handicaps** — each one is converted per course
 and tee before any allowance is applied.
 
-Default allowances (all editable in **Admin → Rules**):
+Default allowances (editable in **Admin → Rules** for every match of that
+format, or per match in **Admin → Formats & pairings**):
 
 | Format | Allowance |
 | --- | --- |
@@ -131,6 +143,44 @@ Live status shows `AS` / `2 UP` with holes played; finished matches use proper
 golf notation (`3&2`, `1 UP`, `Halved`). Dormie is flagged. A match closes out
 the moment the lead exceeds the holes remaining, and the engine will not advance
 the status past a hole that has not been scored yet.
+
+---
+
+## Reconfiguring a round
+
+A round is a list of matches. Each match carries a format, a first and last
+hole, a matchup, a points value and — optionally — its own handicap allowance.
+There is no separate notion of a "day type", and nothing in the code knows that
+Day 3 is unusual.
+
+**Admin → Formats & pairings** shows, per round:
+
+- a **coverage bar** of holes 1–18 coloured by which match covers each one, so
+  gaps and overlaps are visible before anyone tees off;
+- the round's format **derived from its matches**, with a one-tap prompt to
+  relabel the round when the two have drifted apart;
+- the **points at stake** for the day, recalculated as you edit;
+- **validation**, which distinguishes what will break the scorecard from what is
+  merely unusual:
+
+| Reported as | Example |
+| --- | --- |
+| Error | Two matches cover the same hole for the same player — one of them would silently never be scored |
+| Error | A hole range runs off the end of the card, or ends before it starts |
+| Error | A match has fewer than two sides, or the same player on both sides |
+| Warning | A side has the wrong number of players for its format |
+| Warning | No match covers some holes, so nothing is scored there |
+
+Adding a match creates it with two empty sides over whatever holes are still
+free. Deleting one asks first, and says how many entered scores it would take
+with it.
+
+The live scorecard derives its segments from these rows at render time
+(`src/app/round/[roundId]/score/page.tsx`), so re-ranging Day 3 to 4/8/6 holes,
+or turning Day 4 into two nine-hole formats, needs no code change. The rules
+themselves live in `src/lib/rounds/format-plan.ts` as pure functions, tested in
+`format-plan.test.ts` against configurations that are nothing like the seeded
+one.
 
 ---
 

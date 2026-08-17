@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedSnapshot } from './tour';
 import { computeMatch, computeStandings } from '@/lib/scoring/engine';
 import type { MatchOutcome } from '@/lib/scoring/engine';
+import { describeRoundFormat, planRound } from '@/lib/rounds/format-plan';
 
 /**
  * Locks the tournament points structure and the supplied handicap indexes.
@@ -245,6 +246,60 @@ describe('rounds link to courses', () => {
     for (const course of snapshot.courses) {
       expect(course.dataVerified).toBe(false);
       expect(course.verifiedAt).toBeNull();
+    }
+  });
+});
+
+describe('the seeded format plan is a default, not a fixture', () => {
+  it('stores every round as ordinary editable matches, Day 3 included', () => {
+    // Nothing marks Day 3 as special: it is eight rows differing only in the
+    // hole range and format they carry, exactly like every other day.
+    const round = snapshot.rounds.find((r) => r.dayNo === 3)!;
+    const matches = snapshot.matches.filter((m) => m.roundId === round.id);
+
+    expect(matches).toHaveLength(8);
+    for (const match of matches) {
+      expect(match.roundId).toBe(round.id);
+      expect(typeof match.startHole).toBe('number');
+      expect(typeof match.endHole).toBe('number');
+      expect(match.pointsValue).toBeGreaterThan(0);
+    }
+  });
+
+  it('seeds no per-match allowance, so Admin → Rules governs every match', () => {
+    for (const match of snapshot.matches) {
+      expect(match.allowanceOverride).toBeNull();
+    }
+  });
+
+  it('every round is validly configured out of the box', () => {
+    const sidesFor = (matchId: string) => snapshot.sides.filter((s) => s.matchId === matchId);
+
+    for (const round of snapshot.rounds) {
+      const matches = snapshot.matches.filter((m) => m.roundId === round.id);
+      const holeCount = snapshot.holes.filter((h) => h.courseId === round.courseId).length;
+      const plan = planRound(matches, sidesFor, {
+        holeCount,
+        settings: snapshot.tour.settings,
+      });
+
+      expect(plan.issues.filter((i) => i.level === 'error')).toEqual([]);
+      expect(plan.ok, `Day ${round.dayNo} has a broken format plan`).toBe(true);
+    }
+  });
+
+  it('labels each round with what its matches actually say', () => {
+    // A stale label is how a reconfigured round misleads people, so the seed
+    // must already agree with the derivation.
+    for (const round of snapshot.rounds) {
+      const matches = snapshot.matches.filter((m) => m.roundId === round.id);
+      expect(round.formatLabel, `Day ${round.dayNo}`).toBe(describeRoundFormat(matches));
+    }
+  });
+
+  it('no match name hard-codes a hole range that editing would falsify', () => {
+    for (const match of snapshot.matches) {
+      expect(match.name, `${match.name} embeds a hole range`).not.toMatch(/H\d+\s*[–-]\s*\d+/);
     }
   });
 });

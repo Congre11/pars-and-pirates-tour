@@ -141,7 +141,7 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
       {matches.length === 0 ? (
         <EmptyState
           title="No matches set up yet"
-          detail="Captains can add the pairings in Admin → Pairings."
+          detail="Captains can add the pairings in Admin → Formats & pairings."
           cta={
             <Link href="/admin/pairings" className="btn-ghost mt-2">
               Set up pairings

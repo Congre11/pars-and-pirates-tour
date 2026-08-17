@@ -191,7 +191,9 @@ const SEED_ROUNDS: SeedRound[] = [
     name: 'Day 3 — Triple Threat',
     date: '2026-09-01',
     courseKey: 'pga-sultan',
-    formatLabel: 'H1–6 Singles • H7–12 Scramble • H13–18 Alternate Shot',
+    // Matches what `describeRoundFormat` derives from the matches below, so a
+    // freshly seeded tour does not immediately offer to relabel itself.
+    formatLabel: 'H1–6 Singles · H7–12 Scramble · H13–18 Alt. Shot',
     teeTime: '12:00',
     notes:
       'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.',
@@ -199,7 +201,7 @@ const SEED_ROUNDS: SeedRound[] = [
       // Holes 1-6: four singles matches.
       {
         key: 'd3-s1',
-        name: 'Singles 1 (H1–6)',
+        name: 'Singles 1',
         format: 'singles',
         startHole: 1,
         endHole: 6,
@@ -208,7 +210,7 @@ const SEED_ROUNDS: SeedRound[] = [
       },
       {
         key: 'd3-s2',
-        name: 'Singles 2 (H1–6)',
+        name: 'Singles 2',
         format: 'singles',
         startHole: 1,
         endHole: 6,
@@ -217,7 +219,7 @@ const SEED_ROUNDS: SeedRound[] = [
       },
       {
         key: 'd3-s3',
-        name: 'Singles 3 (H1–6)',
+        name: 'Singles 3',
         format: 'singles',
         startHole: 1,
         endHole: 6,
@@ -226,7 +228,7 @@ const SEED_ROUNDS: SeedRound[] = [
       },
       {
         key: 'd3-s4',
-        name: 'Singles 4 (H1–6)',
+        name: 'Singles 4',
         format: 'singles',
         startHole: 1,
         endHole: 6,
@@ -236,7 +238,7 @@ const SEED_ROUNDS: SeedRound[] = [
       // Holes 7-12: two 2-man scrambles.
       {
         key: 'd3-sc1',
-        name: 'Scramble 1 (H7–12)',
+        name: 'Scramble 1',
         format: 'two_man_scramble',
         startHole: 7,
         endHole: 12,
@@ -248,7 +250,7 @@ const SEED_ROUNDS: SeedRound[] = [
       },
       {
         key: 'd3-sc2',
-        name: 'Scramble 2 (H7–12)',
+        name: 'Scramble 2',
         format: 'two_man_scramble',
         startHole: 7,
         endHole: 12,
@@ -261,7 +263,7 @@ const SEED_ROUNDS: SeedRound[] = [
       // Holes 13-18: two alternate-shot matches.
       {
         key: 'd3-f1',
-        name: 'Alternate Shot 1 (H13–18)',
+        name: 'Alternate Shot 1',
         format: 'foursomes',
         startHole: 13,
         endHole: 18,
@@ -273,7 +275,7 @@ const SEED_ROUNDS: SeedRound[] = [
       },
       {
         key: 'd3-f2',
-        name: 'Alternate Shot 2 (H13–18)',
+        name: 'Alternate Shot 2',
         format: 'foursomes',
         startHole: 13,
         endHole: 18,
@@ -556,6 +558,9 @@ export function buildSeedSnapshot(): TourSnapshot {
         startHole: seedMatch.startHole,
         endHole: seedMatch.endHole,
         pointsValue: seedMatch.points,
+        // Seeded matches use the tour default allowance for their format.
+        // Admin -> Pairings can give any one of them its own.
+        allowanceOverride: null,
         status: 'upcoming',
         sortOrder: matchIndex,
       });

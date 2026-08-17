@@ -52,7 +52,8 @@ need somewhere to put the app itself so people can open it from a link — that 
    Copy **everything** in it and paste it into the box.
 3. Click **Run**. You should see "Success. No rows returned".
 4. Click **New query**, then do the same with
-   `supabase/migrations/0002_course_verification.sql`.
+   `supabase/migrations/0002_course_verification.sql`, and again for
+   `supabase/migrations/0003_editable_formats.sql`. Run them in number order.
 5. Click **New query** one more time.
 6. Open `supabase/seed.sql`, copy everything, paste, and click **Run**.
    This one prints a small table at the bottom. Check it says:
@@ -171,11 +172,44 @@ still works — you upload the photo and type the numbers in yourself.
 **Admin → Rounds.** Pick which tees you are playing on each day. This changes
 everyone's course handicap, so do it before Day 1.
 
-### 4. Pairings
+### 4. Formats and pairings
 
-**Admin → Pairings.** The app ships with balanced default line-ups. Change them
-whenever the captains decide — the change appears on everyone's phone within
-seconds, so you can do the big reveal live.
+**Admin → Formats & pairings.** The app ships with balanced default line-ups and
+the format plan you asked for. Change any of it whenever the captains decide —
+changes appear on everyone's phone within seconds, so you can do the big reveal
+live.
+
+Each day is a list of **matches**. A match is simply: a format, the holes it
+covers, who is playing, what it is worth, and (if you want) its own handicap
+allowance. Tap a match to change any of those.
+
+**Nothing about Day 3 is fixed.** It is set up as singles over holes 1–6, a
+two-man scramble over 7–12 and alternate shot over 13–18 because that is what
+you asked for — but it is stored the same way as every other day. If the
+captains decide on the night to play 1–9 better ball and 10–18 alternate shot
+instead, you change it here in about a minute and the scorecards follow. Nobody
+needs to touch any code.
+
+Above each day you get:
+
+- a **coloured bar** showing which format covers which holes, so gaps and
+  clashes are obvious at a glance;
+- the **points at stake** that day, which updates as you edit;
+- a **plain-English list of anything wrong**. Red means the scorecard will
+  misbehave until you fix it — most often two matches covering the same hole for
+  the same player. Amber means it is unusual but will still work, e.g. holes
+  nobody is matched on.
+
+To add a match, tap **+ Add a match to Day _n_** — it appears covering whatever
+holes are still free, and you pick the players. To remove one, open it and tap
+**Remove this match**; it asks first, and warns you if scores have already been
+entered against it.
+
+> **Handicap allowance per match.** Normally a match uses the allowance for its
+> format from **Admin → Rules**, so changing "2-man scramble" there changes every
+> scramble. If you want one hole range to play off something different, open
+> that match and switch on **Handicap allowance**. It starts from the current
+> default, so switching it on changes nothing until you actually edit a number.
 
 ---
 
@@ -197,9 +231,10 @@ Do **not** give out the `ADMIN_PIN` except to the captains and the organiser.
 
 - Tap **Start scoring** on the day's round. It opens that course's scorecard
   already loaded — you never pick a course.
-- On **Day 3** the format changes as you walk: holes 1–6 are singles, 7–12 a
-  two-man scramble, 13–18 alternate shot. The card switches by itself as you
-  move through the holes.
+- If a day is set up with more than one format, the card **switches by itself**
+  as you walk. Day 3 ships as singles over 1–6, a two-man scramble over 7–12 and
+  alternate shot over 13–18 — but that is just how it is configured, and
+  Admin → Formats & pairings can change it right up to the tee.
 - Anyone can enter scores. Tap the big number your ball took. That is the whole
   interaction — there is no Save button.
 - The **✕** button means picked up / conceded the hole.
@@ -276,7 +311,7 @@ npm install
 cp .env.example .env.local   # fill in, or leave blank for demo mode
 npm run dev
 
-npm test          # 68 tests: scoring engine, points structure, extraction
+npm test          # 96 tests: scoring, points, format plans, extraction
 npm run typecheck
 npm run lint
 npm run seed:sql  # regenerate supabase/seed.sql after editing src/lib/seed/

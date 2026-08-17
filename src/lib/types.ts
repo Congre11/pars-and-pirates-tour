@@ -273,8 +273,31 @@ export interface Match {
   endHole: number;
   /** Points at stake. Defaults to the tour's pointsPerWin. */
   pointsValue: number;
+  /**
+   * Handicap allowance for THIS match only. Null means "use the tour default
+   * for this format" (Admin -> Rules), which is what almost every match wants.
+   *
+   * It exists so one hole range can be given its own allowance without
+   * changing every other match played in the same format — e.g. running the
+   * Day 3 scramble off 35/15% while a later scramble uses something else.
+   */
+  allowanceOverride: HandicapAllowance | null;
   status: MatchStatusValue;
   sortOrder: number;
+}
+
+/**
+ * The allowance actually in force for a match: its own override if it has one,
+ * otherwise the tour default for its format.
+ *
+ * Everything that displays or computes strokes goes through this, so the
+ * scorecard can never show one allowance while the engine applies another.
+ */
+export function allowanceForMatch(
+  match: Pick<Match, 'format' | 'allowanceOverride'>,
+  settings: TourSettings,
+): HandicapAllowance {
+  return match.allowanceOverride ?? settings.allowances[match.format];
 }
 
 export interface MatchSide {

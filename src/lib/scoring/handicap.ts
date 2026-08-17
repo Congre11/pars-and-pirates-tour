@@ -132,8 +132,10 @@ export function computeMatchHandicaps(
   format: MatchFormat,
   tee: Tee,
   settings: TourSettings,
+  /** This match's own allowance, if an admin set one. Null uses the default. */
+  allowanceOverride: HandicapAllowance | null = null,
 ): SideHandicapResult[] {
-  const allowance = settings.allowances[format];
+  const allowance = allowanceOverride ?? settings.allowances[format];
 
   const raw: SideHandicapResult[] = sides.map((side) => {
     const courseHandicaps: Record<string, number> = {};

@@ -62,7 +62,7 @@ export default function SetupPage() {
       key: 'points',
       label: 'Tournament points',
       ok: true,
-      detail: 'Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4. 11 points in total; 6 wins the tour. Every match value is editable in Admin → Pairings.',
+      detail: 'Day 1 = 2, Day 2 = 2, Day 3 = 3, Day 4 = 4. 11 points in total; 6 wins the tour. Every match value is editable in Admin → Formats & pairings.',
     },
     {
       key: 'pairings',
@@ -70,7 +70,7 @@ export default function SetupPage() {
       ok: snapshot.matches.length > 0,
       detail:
         snapshot.matches.length > 0
-          ? `${snapshot.matches.length} matches are set up across the four days. Captains can change any of them in Admin → Pairings.`
+          ? `${snapshot.matches.length} matches are set up across the four days. Captains can change any of them in Admin → Formats & pairings.`
           : 'No matches yet.',
     },
     {

@@ -5,7 +5,7 @@
 -- Regenerate with: npm run seed:sql
 -- Source of truth: src/lib/seed/tour.ts and src/lib/seed/courses.ts
 --
--- Run this AFTER supabase/migrations/0001_init.sql and 0002_course_verification.sql.
+-- Run this AFTER every file in supabase/migrations/, in numbered order.
 -- Safe to re-run: it updates the seeded rows in place and never touches
 -- the scores table, so you will not lose live scoring by re-seeding.
 -- ===========================================================================
@@ -188,7 +188,7 @@ on conflict (id) do update set
 insert into rounds (id, tour_id, day_no, name, date, course_id, tee_id, format_label, tee_time, status, notes, sort_order) values
   ('8296c225-7362-4e9f-80a3-53118e5c9757', '215244a1-d717-445b-8ddf-4dbd03d820a3', 1, 'Day 1 — Scramble', '2026-08-29', 'b494460c-9465-4986-8c5f-04d89a469d5e', '8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', '4-Man Team Scramble', '11:00', 'upcoming', 'Breakfast 08:00–09:30. Springboks v New Zealand at 17:00 — Springbok jerseys are a must. Day 2 teams announced after the rugby.', 0),
   ('7f96bd6c-7462-4032-8da3-4e588f5c98ea', '215244a1-d717-445b-8ddf-4dbd03d820a3', 2, 'Day 2 — Better Ball', '2026-08-30', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', '9f42c02f-b37a-414d-8d6a-d4430318e655', 'Better Ball Match Play', '18:27', 'upcoming', 'Sleep in. Free day. First fines meeting after the round. Out to town — LARGE.', 1),
-  ('8096beff-7562-41c5-8ea3-4feb905c9a7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', 3, 'Day 3 — Triple Threat', '2026-09-01', 'e17d413e-7ca8-4498-8928-c142e15860f0', '5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'H1–6 Singles • H7–12 Scramble • H13–18 Alternate Shot', '12:00', 'upcoming', 'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.', 2),
+  ('8096beff-7562-41c5-8ea3-4feb905c9a7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', 3, 'Day 3 — Triple Threat', '2026-09-01', 'e17d413e-7ca8-4498-8928-c142e15860f0', '5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'H1–6 Singles · H7–12 Scramble · H13–18 Alt. Shot', '12:00', 'upcoming', 'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.', 2),
   ('7d96ba46-6e62-46c0-83a3-57ca895c8f78', '215244a1-d717-445b-8ddf-4dbd03d820a3', 4, 'Day 4 — Singles', '2026-09-02', '265c5394-11e7-47d2-8ebd-ac38dc39670a', '6da36679-2241-4d5b-88fe-e7952820ff33', 'Singles Match Play', '10:30', 'upcoming', 'Breakfast 07:00–09:00. Trophy presentation, closing ceremony and final fines after the round. Out in town.', 3)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
@@ -204,22 +204,22 @@ on conflict (id) do update set
   sort_order = excluded.sort_order
 ;
 
-insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, status, sort_order) values
-  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 2, 'upcoming', 0),
-  ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, 'upcoming', 0),
-  ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, 'upcoming', 1),
-  ('c72bcb14-7807-47a6-82d3-b7d0988425ce', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 1 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 0),
-  ('ca2bcfcd-7707-4613-85d3-bc899784243b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 2 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 1),
-  ('c92bce3a-7607-4480-84d3-baf6968422a8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 3 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 2),
-  ('c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 4 (H1–6)', 'singles', 1, 6, 0.25, 'upcoming', 3),
-  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1 (H7–12)', 'two_man_scramble', 7, 12, 0.5, 'upcoming', 4),
-  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2 (H7–12)', 'two_man_scramble', 7, 12, 0.5, 'upcoming', 5),
-  ('caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 1 (H13–18)', 'foursomes', 13, 18, 0.5, 'upcoming', 6),
-  ('c7f7f144-8d37-46ea-83b3-7ee80db2a932', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 2 (H13–18)', 'foursomes', 13, 18, 0.5, 'upcoming', 7),
-  ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, 'upcoming', 0),
-  ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, 'upcoming', 1),
-  ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, 'upcoming', 2),
-  ('72dc0afa-ca37-4ee4-8417-bbde4a8b81bc', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 4', 'singles', 1, 18, 1, 'upcoming', 3)
+insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, allowance_override, status, sort_order) values
+  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 2, null, 'upcoming', 0),
+  ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, null, 'upcoming', 0),
+  ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, null, 'upcoming', 1),
+  ('c72bcb14-7807-47a6-82d3-b7d0988425ce', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 1', 'singles', 1, 6, 0.25, null, 'upcoming', 0),
+  ('ca2bcfcd-7707-4613-85d3-bc899784243b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 2', 'singles', 1, 6, 0.25, null, 'upcoming', 1),
+  ('c92bce3a-7607-4480-84d3-baf6968422a8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 3', 'singles', 1, 6, 0.25, null, 'upcoming', 2),
+  ('c42bc65b-7d07-4f85-87d3-bfaf9d842dad', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Singles 4', 'singles', 1, 6, 0.25, null, 'upcoming', 3),
+  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1', 'two_man_scramble', 7, 12, 0.5, null, 'upcoming', 4),
+  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2', 'two_man_scramble', 7, 12, 0.5, null, 'upcoming', 5),
+  ('caf7f5fd-8c37-4557-86b3-83a10cb2a79f', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 1', 'foursomes', 13, 18, 0.5, null, 'upcoming', 6),
+  ('c7f7f144-8d37-46ea-83b3-7ee80db2a932', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Alternate Shot 2', 'foursomes', 13, 18, 0.5, null, 'upcoming', 7),
+  ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, null, 'upcoming', 0),
+  ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, null, 'upcoming', 1),
+  ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, null, 'upcoming', 2),
+  ('72dc0afa-ca37-4ee4-8417-bbde4a8b81bc', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 4', 'singles', 1, 18, 1, null, 'upcoming', 3)
 on conflict (id) do update set
   round_id = excluded.round_id,
   name = excluded.name,
@@ -227,6 +227,7 @@ on conflict (id) do update set
   start_hole = excluded.start_hole,
   end_hole = excluded.end_hole,
   points_value = excluded.points_value,
+  allowance_override = excluded.allowance_override,
   status = excluded.status,
   sort_order = excluded.sort_order
 ;

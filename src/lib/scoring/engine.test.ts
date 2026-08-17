@@ -65,6 +65,7 @@ function match(overrides: Partial<Match> = {}): Match {
     startHole: 1,
     endHole: 18,
     pointsValue: 1,
+    allowanceOverride: null,
     status: 'live',
     sortOrder: 0,
     ...overrides,
@@ -524,6 +525,72 @@ describe('team scramble', () => {
     // One side must be off scratch in difference mode.
     expect(Math.min(a, b)).toBe(0);
     expect(Math.max(a, b)).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('per-match handicap allowance', () => {
+  // Two players a side, so the allowance has something to bite on.
+  const players = [
+    player('a1', 'team-a', 4),
+    player('a2', 'team-a', 20),
+    player('b1', 'team-b', 6),
+    player('b2', 'team-b', 8),
+  ];
+
+  function run(allowanceOverride: Match['allowanceOverride']) {
+    return computeMatch({
+      match: match({ format: 'two_man_scramble', allowanceOverride }),
+      sides: sides(['a1', 'a2'], ['b1', 'b2']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+  }
+
+  // On this tee the indexes above convert to course handicaps 4, 22, 6 and 8.
+  it('uses the tour default for the format when no override is set', () => {
+    const outcome = run(null);
+    // 35% of 4 + 15% of 22 = 4.7 -> 5;  35% of 6 + 15% of 8 = 3.3 -> 3.
+    // Difference mode: the lower side plays off scratch.
+    expect(outcome.handicaps['side-a'].rawPlayingHandicap).toBe(5);
+    expect(outcome.handicaps['side-b'].rawPlayingHandicap).toBe(3);
+    expect(outcome.handicaps['side-a'].playingHandicap).toBe(2);
+    expect(outcome.handicaps['side-b'].playingHandicap).toBe(0);
+  });
+
+  it("applies the match's own allowance instead when one is set", () => {
+    // Full combined handicaps rather than 35/15.
+    const outcome = run({ weights: [1, 1], rounding: 'nearest' });
+    expect(outcome.handicaps['side-a'].rawPlayingHandicap).toBe(26);
+    expect(outcome.handicaps['side-b'].rawPlayingHandicap).toBe(14);
+    expect(outcome.handicaps['side-a'].playingHandicap).toBe(12);
+    expect(outcome.handicaps['side-b'].playingHandicap).toBe(0);
+  });
+
+  it('changes the strokes actually received, not just the label', () => {
+    const standard = run(null);
+    const custom = run({ weights: [1, 1], rounding: 'nearest' });
+    const strokesOn = (outcome: ReturnType<typeof run>, holeNo: number) =>
+      outcome.sideStrokes['side-a'][holeNo];
+
+    // Off 2 shots, side A gets a stroke on the two hardest holes only.
+    expect(strokesOn(standard, 2)).toBe(1);
+    expect(strokesOn(standard, 3)).toBe(0);
+    // Off 12, it gets a stroke on SI 1-12.
+    expect(strokesOn(custom, 1)).toBe(1);
+    expect(strokesOn(custom, 12)).toBe(1);
+    expect(strokesOn(custom, 13)).toBe(0);
+  });
+
+  it("honours the override's rounding rule", () => {
+    // 50% of 4 + 50% of 20 = 12 exactly; use a weight that lands on a fraction.
+    const down = run({ weights: [0.5, 0.4], rounding: 'floor' });
+    const up = run({ weights: [0.5, 0.4], rounding: 'ceil' });
+    // 0.5*4 + 0.4*20 = 10 for side A; 0.5*6 + 0.4*8 = 6.2 for side B.
+    expect(down.handicaps['side-b'].rawPlayingHandicap).toBe(6);
+    expect(up.handicaps['side-b'].rawPlayingHandicap).toBe(7);
   });
 });
 

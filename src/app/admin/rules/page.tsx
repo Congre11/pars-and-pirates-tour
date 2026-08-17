@@ -60,7 +60,8 @@ export default function AdminRulesPage() {
         </div>
         <p className="text-xs leading-snug text-chalk-500">
           These are the defaults for new matches and the ratio used when a match is halved.
-          Individual matches can be worth more or less — set that per match in Admin → Pairings.
+          Individual matches can be worth more or less — set that per match in Admin → Formats
+          &amp; pairings.
         </p>
       </div>
 

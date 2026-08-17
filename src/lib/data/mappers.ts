@@ -9,6 +9,7 @@ import {
   type Activity,
   type Course,
   type Fine,
+  type HandicapAllowance,
   type Hole,
   type ItineraryItem,
   type Match,
@@ -230,6 +231,24 @@ export const toRoundRow = (r: Partial<Round>): Row => ({
   ...(r.sortOrder !== undefined && { sort_order: r.sortOrder }),
 });
 
+/**
+ * A per-match allowance override, or null.
+ *
+ * A malformed override would silently change everyone's strokes, so anything
+ * that is not a usable weights array falls back to null — meaning "use the
+ * tour default for this format" rather than "play off nothing".
+ */
+export function toAllowanceOverride(value: unknown): HandicapAllowance | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<HandicapAllowance>;
+  const weights = Array.isArray(raw.weights)
+    ? raw.weights.filter((w): w is number => typeof w === 'number' && Number.isFinite(w))
+    : [];
+  if (weights.length === 0) return null;
+  const rounding = raw.rounding === 'floor' || raw.rounding === 'ceil' ? raw.rounding : 'nearest';
+  return { weights, rounding };
+}
+
 export const fromMatchRow = (r: Row): Match => ({
   id: str(r.id),
   roundId: str(r.round_id),
@@ -238,6 +257,7 @@ export const fromMatchRow = (r: Row): Match => ({
   startHole: num(r.start_hole, 1),
   endHole: num(r.end_hole, 18),
   pointsValue: num(r.points_value, 1),
+  allowanceOverride: toAllowanceOverride(r.allowance_override),
   status: (str(r.status, 'upcoming') as Match['status']) ?? 'upcoming',
   sortOrder: num(r.sort_order),
 });
@@ -250,6 +270,7 @@ export const toMatchRow = (m: Partial<Match>): Row => ({
   ...(m.startHole !== undefined && { start_hole: m.startHole }),
   ...(m.endHole !== undefined && { end_hole: m.endHole }),
   ...(m.pointsValue !== undefined && { points_value: m.pointsValue }),
+  ...(m.allowanceOverride !== undefined && { allowance_override: m.allowanceOverride }),
   ...(m.status !== undefined && { status: m.status }),
   ...(m.sortOrder !== undefined && { sort_order: m.sortOrder }),
 });
