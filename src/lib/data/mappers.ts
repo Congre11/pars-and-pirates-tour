@@ -17,6 +17,7 @@ import {
   type MatchSide,
   type Player,
   type Round,
+  type RoundGroup,
   type Score,
   type Team,
   type Tee,
@@ -107,6 +108,7 @@ export const fromPlayerRow = (r: Row): Player => ({
   nickname: nstr(r.nickname),
   initials: str(r.initials),
   isCaptain: bool(r.is_captain),
+  isOrganiser: bool(r.is_organiser),
   hnaId: nstr(r.hna_id),
   handicapIndex: nnum(r.handicap_index),
   handicapSource: (str(r.handicap_source, 'manual') as Player['handicapSource']) ?? 'manual',
@@ -123,6 +125,7 @@ export const toPlayerRow = (p: Partial<Player>): Row => ({
   ...(p.nickname !== undefined && { nickname: p.nickname }),
   ...(p.initials !== undefined && { initials: p.initials }),
   ...(p.isCaptain !== undefined && { is_captain: p.isCaptain }),
+  ...(p.isOrganiser !== undefined && { is_organiser: p.isOrganiser }),
   ...(p.hnaId !== undefined && { hna_id: p.hnaId }),
   ...(p.handicapIndex !== undefined && { handicap_index: p.handicapIndex }),
   ...(p.handicapSource !== undefined && { handicap_source: p.handicapSource }),
@@ -390,8 +393,29 @@ export const toFineRow = (f: Partial<Fine>): Row => ({
   ...(f.status !== undefined && { status: f.status }),
 });
 
+export const fromGroupRow = (r: Row): RoundGroup => ({
+  id: str(r.id),
+  roundId: str(r.round_id),
+  name: str(r.name),
+  playerIds: Array.isArray(r.player_ids) ? (r.player_ids as string[]) : [],
+  sortOrder: num(r.sort_order),
+  updatedBy: str(r.updated_by, 'unknown'),
+  updatedAt: str(r.updated_at),
+});
+
+export const toGroupRow = (g: Partial<RoundGroup>): Row => ({
+  ...(g.id !== undefined && { id: g.id }),
+  ...(g.roundId !== undefined && { round_id: g.roundId }),
+  ...(g.name !== undefined && { name: g.name }),
+  ...(g.playerIds !== undefined && { player_ids: g.playerIds }),
+  ...(g.sortOrder !== undefined && { sort_order: g.sortOrder }),
+  ...(g.updatedBy !== undefined && { updated_by: g.updatedBy }),
+  ...(g.updatedAt !== undefined && { updated_at: g.updatedAt }),
+});
+
 /** Table name -> row mapper, used by the realtime subscription. */
 export const ROW_MAPPERS = {
+  round_groups: fromGroupRow,
   tours: fromTourRow,
   teams: fromTeamRow,
   players: fromPlayerRow,
@@ -416,6 +440,7 @@ export const SNAPSHOT_KEYS = {
   tees: 'tees',
   holes: 'holes',
   rounds: 'rounds',
+  round_groups: 'groups',
   matches: 'matches',
   match_sides: 'sides',
   scores: 'scores',

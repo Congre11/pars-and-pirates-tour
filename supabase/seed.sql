@@ -39,15 +39,15 @@ on conflict (id) do update set
   sort_order = excluded.sort_order
 ;
 
-insert into players (id, tour_id, team_id, name, nickname, initials, is_captain, hna_id, handicap_index, handicap_source, handicap_updated_at, photo_url, sort_order) values
-  ('6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Jason Dunbar', 'Skipper', 'JD', true, null, 11.3, 'manual', '2026-08-17T00:00:00.000Z', null, 0),
-  ('3de9536e-bd46-406c-8dec-ce12a2436a44', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Alan Hector', null, 'AH', false, null, 22, 'manual', '2026-08-17T00:00:00.000Z', null, 1),
-  ('a9d58c17-2d27-443d-818b-44e3dbd367a5', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Andrew Rushmere', null, 'AR', false, null, 4, 'manual', '2026-08-17T00:00:00.000Z', null, 2),
-  ('9339dbe8-cae3-4cee-8e39-cedca5102a86', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Ryan Dahl', null, 'RD', false, null, 8.8, 'manual', '2026-08-17T00:00:00.000Z', null, 3),
-  ('1a28dd06-c593-4144-812b-a8225ca4191c', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Jordy West', 'Cap’n', 'JW', true, null, 9.6, 'manual', '2026-08-17T00:00:00.000Z', null, 4),
-  ('a5145540-14c1-45b6-8a5f-37941b13fb2e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Connor Grealy', null, 'CG', false, null, 9.3, 'manual', '2026-08-17T00:00:00.000Z', null, 5),
-  ('d0d7d186-4ba3-421c-8dee-da02904fb2b4', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Nick Georgoulakis', null, 'NG', false, null, 15.9, 'manual', '2026-08-17T00:00:00.000Z', null, 6),
-  ('2afb1850-1eb2-487a-82dd-a0e4bcd08fb2', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Dan Kramer', null, 'DK', false, null, 15, 'manual', '2026-08-17T00:00:00.000Z', null, 7)
+insert into players (id, tour_id, team_id, name, nickname, initials, is_captain, is_organiser, hna_id, handicap_index, handicap_source, handicap_updated_at, photo_url, sort_order) values
+  ('6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Jason Dunbar', 'Skipper', 'JD', true, false, null, 11.3, 'manual', '2026-08-17T00:00:00.000Z', null, 0),
+  ('3de9536e-bd46-406c-8dec-ce12a2436a44', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Alan Hector', null, 'AH', false, false, null, 22, 'manual', '2026-08-17T00:00:00.000Z', null, 1),
+  ('a9d58c17-2d27-443d-818b-44e3dbd367a5', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Andrew Rushmere', null, 'AR', false, false, null, 4, 'manual', '2026-08-17T00:00:00.000Z', null, 2),
+  ('9339dbe8-cae3-4cee-8e39-cedca5102a86', '215244a1-d717-445b-8ddf-4dbd03d820a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', 'Ryan Dahl', null, 'RD', false, false, null, 8.8, 'manual', '2026-08-17T00:00:00.000Z', null, 3),
+  ('1a28dd06-c593-4144-812b-a8225ca4191c', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Jordy West', 'Cap’n', 'JW', true, false, null, 9.6, 'manual', '2026-08-17T00:00:00.000Z', null, 4),
+  ('a5145540-14c1-45b6-8a5f-37941b13fb2e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Connor Grealy', null, 'CG', false, true, null, 9.3, 'manual', '2026-08-17T00:00:00.000Z', null, 5),
+  ('d0d7d186-4ba3-421c-8dee-da02904fb2b4', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Nick Georgoulakis', null, 'NG', false, false, null, 15.9, 'manual', '2026-08-17T00:00:00.000Z', null, 6),
+  ('2afb1850-1eb2-487a-82dd-a0e4bcd08fb2', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', 'Dan Kramer', null, 'DK', false, false, null, 15, 'manual', '2026-08-17T00:00:00.000Z', null, 7)
 on conflict (id) do update set
   tour_id = excluded.tour_id,
   team_id = excluded.team_id,
@@ -55,6 +55,7 @@ on conflict (id) do update set
   nickname = excluded.nickname,
   initials = excluded.initials,
   is_captain = excluded.is_captain,
+  is_organiser = excluded.is_organiser,
   hna_id = excluded.hna_id,
   handicap_index = excluded.handicap_index,
   handicap_source = excluded.handicap_source,
@@ -202,6 +203,24 @@ on conflict (id) do update set
   status = excluded.status,
   notes = excluded.notes,
   sort_order = excluded.sort_order
+;
+
+insert into round_groups (id, round_id, name, player_ids, sort_order, updated_by, updated_at) values
+  ('de196008-2cb4-4bb6-8047-430c1ed7b14e', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('df19619b-2db4-4d49-8147-449f1fd7b2e1', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('fe6cd0ad-0990-4767-8072-dac1dbb2da9f', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('fd6ccf1a-0890-45d4-8f72-d92edab2d90c', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('f7df21c6-11b1-4578-89e5-5e3ae511bd30', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('f8df2359-12b1-470b-8ae5-5fcde611bec3', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('9947edfb-77cf-41a1-8234-aa0749f1d4d9', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
+  ('9847ec68-76cf-400e-8134-a87448f1d346', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z')
+on conflict (id) do update set
+  round_id = excluded.round_id,
+  name = excluded.name,
+  player_ids = excluded.player_ids,
+  sort_order = excluded.sort_order,
+  updated_by = excluded.updated_by,
+  updated_at = excluded.updated_at
 ;
 
 insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, allowance_override, status, sort_order) values

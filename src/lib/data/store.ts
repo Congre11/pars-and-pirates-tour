@@ -63,6 +63,21 @@ export interface AdminPatches {
 
 export type AdminEntity = keyof AdminPatches;
 
+/**
+ * Saving the 4-balls for one round.
+ *
+ * Deliberately NOT part of `AdminPatches`: rearranging who walks with whom is
+ * open to every signed-in player, while everything in `AdminPatches` needs the
+ * admin PIN. The whole round's groups are sent together because they only make
+ * sense as a set — moving a player out of one group always moves them into
+ * another, and two half-applied writes would put someone in both or neither.
+ */
+export interface SaveGroupsInput {
+  roundId: string;
+  groups: Array<{ id?: string; name: string; playerIds: string[]; sortOrder: number }>;
+  updatedBy: string;
+}
+
 export interface TourStore {
   readonly mode: StoreMode;
   /** Load the whole tour. Small enough (a few hundred rows) to fetch at once. */
@@ -75,6 +90,11 @@ export interface TourStore {
   subscribe(onChange: (snapshot: TourSnapshot) => void): () => void;
   /** The hot path. Must be fast and safe to call optimistically. */
   setScore(input: SetScoreInput): Promise<void>;
+  /**
+   * Save a round's 4-balls. Open to any signed-in player, not just admins.
+   * Replaces the whole set for that round.
+   */
+  saveGroups(input: SaveGroupsInput): Promise<void>;
   /** Admin edits. */
   update<K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]): Promise<void>;
   /** Insert a new row (itinerary items, fines, matches, sides). */
@@ -101,6 +121,7 @@ export function cloneSnapshot(snapshot: TourSnapshot): TourSnapshot {
     tees: [...snapshot.tees],
     holes: [...snapshot.holes],
     rounds: [...snapshot.rounds],
+    groups: [...snapshot.groups],
     matches: [...snapshot.matches],
     sides: [...snapshot.sides],
     scores: [...snapshot.scores],

@@ -53,7 +53,9 @@ need somewhere to put the app itself so people can open it from a link — that 
 3. Click **Run**. You should see "Success. No rows returned".
 4. Click **New query**, then do the same with
    `supabase/migrations/0002_course_verification.sql`, and again for
-   `supabase/migrations/0003_editable_formats.sql`. Run them in number order.
+   `supabase/migrations/0003_editable_formats.sql` and
+   `supabase/migrations/0004_four_balls_and_organiser.sql`. Run them in number
+   order.
 5. Click **New query** one more time.
 6. Open `supabase/seed.sql`, copy everything, paste, and click **Run**.
    This one prints a small table at the bottom. Check it says:
@@ -93,8 +95,8 @@ the left menu.
    | `NEXT_PUBLIC_SUPABASE_URL` | the Project URL from Step 3 |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the anon / public key |
    | `SUPABASE_SERVICE_ROLE_KEY` | the service_role key |
-   | `TOUR_PIN` | any number you like, e.g. `1927` — everyone types this |
-   | `ADMIN_PIN` | a *different* number, e.g. `2609` — captains only |
+   | `TOUR_PIN` | any number you like — everyone types this |
+   | `ADMIN_PIN` | a *different* number — organiser and captains only |
    | `SESSION_SECRET` | a long random string (see below) |
    | `ANTHROPIC_API_KEY` | optional — lets the app read scorecard photos |
 
@@ -213,6 +215,80 @@ entered against it.
 
 ---
 
+## Who can do what
+
+There are two PINs, and they are the only thing that decides what someone can
+do. **Being a captain does not grant admin access** — it never did, and the
+locked screen used to say "Captains only", which was misleading.
+
+| | Types the **admin PIN** | Types the **tour PIN** |
+| --- | --- | --- |
+| Full Admin area | ✅ | ❌ |
+| Edit handicaps, courses, formats, pairings, points, itinerary | ✅ | ❌ |
+| Correct scores | ✅ | ❌ |
+| **Edit the daily 4-balls** | ✅ | ✅ |
+| Enter scores | ✅ | ✅ |
+
+Connor Grealy is marked as the **organiser** in the app and Jason Dunbar and
+Jordy West as **captains** — you will see `ORG` and `C` next to their names on
+the Teams screen. Those are labels so everyone knows who is who. The app does
+not use them to decide access.
+
+**If you are the organiser and Admin is locked**, you signed in with the tour
+PIN. Go to **More → Sign out**, sign back in, and type the `ADMIN_PIN` instead.
+If it still will not let you in, `ADMIN_PIN` is not set in Vercel — add it and
+redeploy.
+
+> Treat the admin PIN as a shared password rather than a name check. Whoever
+> types it is an admin for that session, whichever player they picked.
+
+---
+
+## The daily 4-balls
+
+**Round → 4-balls**, or tap the day on the Schedule and then **4-balls**.
+
+Every player can edit these. No admin PIN, no permission, no waiting for the
+organiser — the groups usually get decided standing on the first tee, so
+anybody can change them from their own phone and everyone else sees it within
+seconds.
+
+Two groups of four, two from each team:
+
+| 4-Ball 1 | 4-Ball 2 |
+| --- | --- |
+| Jason Dunbar | Andrew Rushmere |
+| Alan Hector | Ryan Dahl |
+| Jordy West | Nick Georgoulakis |
+| Connor Grealy | Dan Kramer |
+
+That is just the starting point — change it every day if you like.
+
+**To move someone:** tap their name, then tap whoever you want them to swap
+with. They exchange places. Because it swaps rather than moves, the groups
+always stay at four each.
+
+The screen tells you if something is wrong — someone in both groups, someone in
+neither, a group of three or five, or a group that is not two-and-two. None of
+that stops you saving; it just asks you to confirm, in case you meant it.
+
+### 4-balls are not the matches
+
+Worth being clear about, because on some days they look identical:
+
+- The **4-ball** is who walks round together.
+- The **match** is who is competing against whom.
+
+On Better Ball day they are the same thing — Jason + Alan against Jordy +
+Connor is one 4-ball and one match. On singles day one 4-ball contains two
+separate matches. On Day 3 the same four people walk all 18 holes while the
+format changes three times underneath them.
+
+Rearranging a 4-ball never changes who is playing whom. The matches are set in
+**Admin → Formats & pairings** and only the organiser can change them.
+
+---
+
 ## Getting everyone on it
 
 Send them the Vercel link and the `TOUR_PIN`. Tell them to:
@@ -223,7 +299,11 @@ Send them the Vercel link and the `TOUR_PIN`. Tell them to:
 
 It then behaves like a normal app — full screen, its own icon, no browser bar.
 
-Do **not** give out the `ADMIN_PIN` except to the captains and the organiser.
+Do **not** give out the `ADMIN_PIN` except to yourself and the captains. The
+admin PIN is a shared password, not a name check — whoever types it can edit
+everything, whichever player they picked.
+
+They do **not** need it to rearrange the 4-balls. That is open to everyone.
 
 ---
 
@@ -286,9 +366,11 @@ In Supabase, go to **Database → Replication** (or **Realtime**) and confirm th
 `scores` table is published. The migration tries to do this automatically but
 some projects need Realtime enabled in the dashboard first.
 
-**"Admin PIN required."**
+**Admin is locked and says "Organiser access".**
 You are signed in with the tour PIN. Go to **More → Sign out**, then sign back
-in typing the admin PIN instead.
+in typing the `ADMIN_PIN` instead. Being a captain (or the organiser) does not
+unlock it by itself — the PIN does. If the admin PIN does not work either, it
+is not set in Vercel: add `ADMIN_PIN` there and redeploy.
 
 **A player's strokes look wrong.**
 Check three things in order: their Handicap Index (Admin → Players), the tee
@@ -311,7 +393,7 @@ npm install
 cp .env.example .env.local   # fill in, or leave blank for demo mode
 npm run dev
 
-npm test          # 96 tests: scoring, points, format plans, extraction
+npm test          # 123 tests: scoring, points, formats, 4-balls, extraction
 npm run typecheck
 npm run lint
 npm run seed:sql  # regenerate supabase/seed.sql after editing src/lib/seed/

@@ -23,6 +23,7 @@ import {
   type MatchSide,
   type Player,
   type Round,
+  type RoundGroup,
   type Team,
   type Tee,
   type Tour,
@@ -48,6 +49,11 @@ interface SeedPlayer {
   team: 'pars' | 'pirates';
   isCaptain: boolean;
   /**
+   * Runs the tour and owns the app. A label, not a permission — admin access
+   * comes from the ADMIN_PIN, so the organiser need not be a captain.
+   */
+  isOrganiser?: boolean;
+  /**
    * Current HNA Handicap Index, supplied by the organiser and entered by hand.
    * This is an INDEX, not a course handicap — the engine converts it per course
    * and tee via the WHS formula, then applies the format allowance.
@@ -61,7 +67,7 @@ const SEED_PLAYERS: SeedPlayer[] = [
   { key: 'andrew-rushmere', name: 'Andrew Rushmere', nickname: null, team: 'pars', isCaptain: false, handicapIndex: 4.0 },
   { key: 'ryan-dahl', name: 'Ryan Dahl', nickname: null, team: 'pars', isCaptain: false, handicapIndex: 8.8 },
   { key: 'jordy-west', name: 'Jordy West', nickname: 'Cap’n', team: 'pirates', isCaptain: true, handicapIndex: 9.6 },
-  { key: 'connor-grealy', name: 'Connor Grealy', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 9.3 },
+  { key: 'connor-grealy', name: 'Connor Grealy', nickname: null, team: 'pirates', isCaptain: false, isOrganiser: true, handicapIndex: 9.3 },
   { key: 'nick-georgoulakis', name: 'Nick Georgoulakis', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 15.9 },
   { key: 'dan-kramer', name: 'Dan Kramer', nickname: null, team: 'pirates', isCaptain: false, handicapIndex: 15.0 },
 ];
@@ -115,6 +121,20 @@ interface SeedRound {
   notes: string;
   matches: SeedMatch[];
 }
+
+/**
+ * Default 4-balls — who physically plays together.
+ *
+ * Every round starts with the same two groups; they are expected to change
+ * from day to day and any player can rearrange them in the app. This is NOT
+ * the competitive structure: on a singles day one of these groups contains two
+ * separate matches, and on Day 3 the group stays together for all 18 holes
+ * while the format changes three times underneath it.
+ */
+const DEFAULT_FOUR_BALLS: string[][] = [
+  ['jason-dunbar', 'alan-hector', 'jordy-west', 'connor-grealy'],
+  ['andrew-rushmere', 'ryan-dahl', 'nick-georgoulakis', 'dan-kramer'],
+];
 
 /**
  * Default pairings.
@@ -453,6 +473,7 @@ export function buildSeedSnapshot(): TourSnapshot {
     nickname: p.nickname,
     initials: initialsOf(p.name),
     isCaptain: p.isCaptain,
+    isOrganiser: p.isOrganiser ?? false,
     // HNA membership numbers are still to be supplied; the handicap indexes
     // below are the current HNA figures, entered by hand (Admin -> Players
     // edits them, and records who changed them and when).
@@ -523,6 +544,7 @@ export function buildSeedSnapshot(): TourSnapshot {
   }
 
   const rounds: Round[] = [];
+  const groups: RoundGroup[] = [];
   const matches: Match[] = [];
   const sides: MatchSide[] = [];
   const roundIdByKey: Record<string, string> = {};
@@ -546,6 +568,22 @@ export function buildSeedSnapshot(): TourSnapshot {
       status: 'upcoming',
       notes: seedRound.notes,
       sortOrder: roundIndex,
+    });
+
+    // Default 4-balls: who physically walks together. Two groups of four,
+    // each two Pars and two Pirates. Every player can rearrange these in the
+    // app without admin rights, and they are expected to change day to day —
+    // which is exactly why they are stored apart from the matches below.
+    DEFAULT_FOUR_BALLS.forEach((playerKeys, groupIndex) => {
+      groups.push({
+        id: stableId(`group:${seedRound.key}:${groupIndex}`),
+        roundId,
+        name: `4-Ball ${groupIndex + 1}`,
+        playerIds: playerKeys.map((key) => PLAYER_IDS[key]),
+        sortOrder: groupIndex,
+        updatedBy: 'Seeded default',
+        updatedAt: HANDICAPS_SUPPLIED_AT,
+      });
     });
 
     seedRound.matches.forEach((seedMatch, matchIndex) => {
@@ -601,6 +639,7 @@ export function buildSeedSnapshot(): TourSnapshot {
     tees,
     holes,
     rounds,
+    groups,
     matches,
     sides,
     scores: [],
