@@ -73,6 +73,32 @@ const EMPTY: TourSnapshot = {
   fines: [],
 };
 
+/**
+ * The tables worth a live subscription.
+ *
+ * Every binding is registered again on each reconnect and re-checked against
+ * Postgres for every row that changes, so subscribing to all fourteen tables
+ * cost real database work for data that cannot move mid-round. These four are
+ * the only ones that change while people are playing:
+ *
+ *   scores         — the hot path, every tap
+ *   match_results  — written when a match closes out
+ *   round_groups   — the 4-balls, rearranged on the first tee
+ *   match_sides    — the matchups, re-paired between sections
+ *
+ * Courses, tees, holes, players, rounds, matches, itinerary, activity, fines
+ * and the tour row are set up before play and arrive with the initial `load()`.
+ * An edit to one of those shows up on other phones on their next load rather
+ * than instantly, which is the right trade for a tour that is configured the
+ * evening before and then left alone.
+ */
+const LIVE_TABLES = [
+  'scores',
+  'match_results',
+  'round_groups',
+  'match_sides',
+] as const satisfies readonly RealtimeTable[];
+
 export class SupabaseTourStore implements TourStore {
   readonly mode: StoreMode = 'supabase';
 
@@ -210,7 +236,7 @@ export class SupabaseTourStore implements TourStore {
     const supabase = getBrowserSupabase();
     if (supabase && !this.channel) {
       const channel = supabase.channel('pars-pirates-live');
-      for (const table of Object.keys(SNAPSHOT_KEYS) as RealtimeTable[]) {
+      for (const table of LIVE_TABLES) {
         channel.on(
           'postgres_changes',
           { event: '*', schema: 'public', table },
