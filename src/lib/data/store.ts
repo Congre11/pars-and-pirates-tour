@@ -84,6 +84,20 @@ export interface SaveGroupsInput {
    * need looking at again before anyone relies on them.
    */
   confirm?: boolean;
+  /**
+   * Pairings derived from these same groups, for a round where the 4-balls ARE
+   * the pairings (Day 3: one 4-ball, three formats, same two-man teams all the
+   * way round — see `lib/rounds/derived-pairings.ts`).
+   *
+   * Sent with the groups rather than as a second call so the two cannot half
+   * apply. They are one decision, so they are one write; a round that does not
+   * derive simply omits this.
+   */
+  pairings?: {
+    sides: Array<{ id: string; playerIds: string[] }>;
+    /** Every match across every section, stamped together on a submit. */
+    matchIds: string[];
+  };
 }
 
 /** Saving who is playing whom, optionally confirming it for the round. */

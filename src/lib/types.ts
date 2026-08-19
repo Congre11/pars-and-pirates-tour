@@ -83,8 +83,8 @@ export const FORMAT_SHORT_LABELS: Record<MatchFormat, string> = {
 /**
  * How a side's playing handicap is derived from its players' course handicaps.
  *
- * Every value here is editable in Admin -> Handicap Rules, because the spec
- * explicitly leaves the exact allowances as a pre-tour decision.
+ * Most of these are editable in Admin -> Handicap Rules. Four are NOT — see
+ * `FIXED_ALLOWANCES` below.
  */
 export interface HandicapAllowance {
   /**
@@ -151,6 +151,66 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
     foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
   },
 };
+
+/**
+ * The four formats whose allowance is a TOURNAMENT RULE, not a setting.
+ *
+ * These are fixed in code on purpose. They were previously read from
+ * `tour.settings.allowances`, which is persisted — in Postgres for the real
+ * tour, in localStorage for a demo device. That meant a record written before
+ * the rules were agreed silently kept overriding them: a scoreboard showing a
+ * 2-man scramble pair off `Team 9` instead of `Team 20` with nothing in the
+ * code wrong, and nothing on screen to say why.
+ *
+ * A stale record cannot change the scoring if the scoring never reads it. So
+ * `allowanceFor` below returns these regardless of what is stored, and
+ * regardless of any per-match `allowanceOverride` — an override is persisted
+ * data too, and carries exactly the same risk.
+ *
+ *   2-man scramble  floor((CH1 + CH2) / 2)   one team handicap for the pair
+ *   shamble         floor((CH1 + CH2) / 2)   likewise — both balls net against it
+ *   better ball     100% each                lowest player in the match off zero
+ *   singles         100% each                lower player off zero
+ *
+ * `team_scramble` and `foursomes` are NOT here. Neither is used by this tour's
+ * rounds, so no rule has been agreed for them and they stay editable.
+ */
+export const FIXED_ALLOWANCES: Partial<Record<MatchFormat, HandicapAllowance>> = {
+  two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
+  shamble: { weights: [0.5, 0.5], rounding: 'floor' },
+  better_ball: { weights: [1], rounding: 'nearest' },
+  singles: { weights: [1], rounding: 'nearest' },
+};
+
+/** How each fixed rule reads in plain words, for the screens that show it. */
+export const FIXED_ALLOWANCE_HELP: Partial<Record<MatchFormat, string>> = {
+  two_man_scramble:
+    'The pair play off one team handicap: floor((CH1 + CH2) / 2). The lower pair play off zero and the higher receive the difference.',
+  shamble:
+    'The pair play off one team handicap: floor((CH1 + CH2) / 2). Each finishes their own ball, but both balls net against that same handicap.',
+  better_ball:
+    '100% of each player’s own course handicap. The lowest player in the match plays off zero and the other three receive the difference.',
+  singles: '100% of each player’s own course handicap. The lower player plays off zero.',
+};
+
+/** True when this format's allowance is a fixed rule rather than a setting. */
+export function isFixedAllowance(format: MatchFormat): boolean {
+  return FIXED_ALLOWANCES[format] !== undefined;
+}
+
+/**
+ * The allowance actually in force for a match.
+ *
+ * A fixed rule wins over everything. Otherwise the match's own override wins
+ * over the tour setting, which is the behaviour the editable formats had.
+ */
+export function allowanceFor(
+  format: MatchFormat,
+  settings: TourSettings,
+  allowanceOverride: HandicapAllowance | null = null,
+): HandicapAllowance {
+  return FIXED_ALLOWANCES[format] ?? allowanceOverride ?? settings.allowances[format];
+}
 
 // ---------------------------------------------------------------------------
 // Entities
@@ -374,8 +434,9 @@ export interface Match {
 }
 
 /**
- * The allowance actually in force for a match: its own override if it has one,
- * otherwise the tour default for its format.
+ * The allowance actually in force for a match: the fixed tournament rule for
+ * its format if there is one, otherwise its own override, otherwise the tour
+ * default.
  *
  * Everything that displays or computes strokes goes through this, so the
  * scorecard can never show one allowance while the engine applies another.
@@ -384,7 +445,7 @@ export function allowanceForMatch(
   match: Pick<Match, 'format' | 'allowanceOverride'>,
   settings: TourSettings,
 ): HandicapAllowance {
-  return match.allowanceOverride ?? settings.allowances[match.format];
+  return allowanceFor(match.format, settings, match.allowanceOverride);
 }
 
 export interface MatchSide {

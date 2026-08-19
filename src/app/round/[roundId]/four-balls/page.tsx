@@ -15,6 +15,11 @@ import {
 } from '@/lib/rounds/four-balls';
 import { describeRoundFormat } from '@/lib/rounds/format-plan';
 import { describeConfirmation, groupsConfirmation } from '@/lib/rounds/confirmation';
+import { sectionsForRound } from '@/lib/rounds/matchups';
+import { derivePairingsFromDraft, describeBlock } from '@/lib/rounds/derived-pairings';
+import { courseHandicap, sidePlayingHandicap } from '@/lib/scoring/handicap';
+import { courseHandicapLabel } from '@/lib/format';
+import { FIXED_ALLOWANCES, FORMAT_LABELS, allowanceForMatch } from '@/lib/types';
 
 /**
  * Edit the day's 4-balls.
@@ -38,6 +43,8 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
     saveGroups,
     matchesForRound,
     sidesForMatch,
+    holesForCourse,
+    teeById,
     playerById,
     teamById,
   } = useTour();
@@ -126,6 +133,14 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
         })),
         updatedBy: session?.playerName || 'A player',
         confirm,
+        ...(derived
+          ? {
+              pairings: {
+                sides: derived.sides.map((s) => ({ id: s.sideId, playerIds: s.playerIds })),
+                matchIds: derived.matchIds,
+              },
+            }
+          : {}),
       });
       setSaveState('saved');
       setConfirming(false);
@@ -138,6 +153,34 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
   };
 
   const lastEdited = [...saved].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+
+  // --- Pairings that follow the 4-balls -------------------------------------
+  // On a round with more than one hole-range section (Day 3), the 4-balls ARE
+  // the pairings: the two Pars in a 4-ball are one side and the two Pirates
+  // the other, in every section. Derived from the DRAFT so the teams and their
+  // handicaps update as people are moved, before anything is saved.
+  const tee = teeById(round.teeId);
+  const holeCount = holesForCourse(round.courseId).length || 18;
+  const sections = sectionsForRound(matches, holeCount);
+  const derivation = derivePairingsFromDraft(
+    sections,
+    groups.map((g, i) => ({ ...g, sortOrder: i })),
+    round.id,
+    snapshot.players,
+    teams,
+    sidesForMatch,
+  );
+  const derived = derivation.pairings;
+
+  /** floor((CH1 + CH2) / 2) for a pair, off this round's tee. */
+  const teamHandicap = (playerIds: string[]): number | null => {
+    if (!tee) return null;
+    const chs = playerIds.map((id) => {
+      const index = playerById(id)?.handicapIndex;
+      return index == null ? 0 : courseHandicap(index, tee);
+    });
+    return sidePlayingHandicap(chs, FIXED_ALLOWANCES.two_man_scramble!);
+  };
 
   // One person submitting is enough — this confirms the 4-balls for the day,
   // it is not an approval chain. Any later plain save clears the stamp, so an
@@ -243,6 +286,67 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
         </p>
       )}
 
+      {/* --- What these 4-balls mean for the matches ------------------------ */}
+      {sections.length > 1 && (
+        <div className="card px-3.5 py-3">
+          <div className="label mb-1">Pairings for all {holeCount} holes</div>
+          {derived ? (
+            <>
+              <p className="mb-2.5 text-xs leading-snug text-chalk-400">
+                These 4-balls set who plays whom for the whole round. The same two-man teams play{' '}
+                {sections.map((sec) => `${FORMAT_LABELS[sec.format]} on ${sec.label.toLowerCase()}`).join(', ')}
+                . Move a player and every section follows.
+              </p>
+              <ul className="space-y-2.5">
+                {derived.pairs.map((pair) => (
+                  <li key={pair.groupId ?? pair.groupName} className="rounded-xl bg-white/4 px-3 py-2.5">
+                    <div className="label mb-1.5">{pair.groupName}</div>
+                    {pair.teams.map((side, i) => {
+                      const team = teamById(side.teamId);
+                      const th = teamHandicap(side.playerIds);
+                      return (
+                        <div key={side.teamId}>
+                          {i > 0 && (
+                            <div className="my-1 text-center text-[0.6rem] font-bold text-chalk-600">
+                              vs
+                            </div>
+                          )}
+                          <div className="flex items-baseline justify-between gap-2 text-xs">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: team?.colour }}
+                              />
+                              <span className="truncate">
+                                {side.playerIds
+                                  .map((id) => playerById(id)?.name.split(' ')[0] ?? '?')
+                                  .join(' & ')}
+                              </span>
+                            </span>
+                            <span className="tabular shrink-0 font-bold text-brass-400">
+                              Team {th === null ? '—' : courseHandicapLabel(th)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2.5 border-t border-white/6 pt-2 text-xs leading-snug text-chalk-500">
+                Team handicap is <span className="text-chalk-300">floor((CH1 + CH2) / 2)</span>, used
+                for the Scramble and the Shamble. The Better Ball section uses the four individual
+                course handicaps instead, with the lowest of them off zero.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs leading-snug text-brass-300">
+              {derivation.blockedBy ? describeBlock(derivation.blockedBy) : ''}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* --- Anyone not in a group ------------------------------------------ */}
       {check.unassigned.length > 0 && (
         <div className="card px-3.5 py-3">
@@ -322,7 +426,9 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
                     ? 'Saved ✓'
                     : confirmation.state === 'confirmed' && !dirty
                       ? 'Submitted ✓'
-                      : 'Submit the 4-balls'}
+                      : derived
+                        ? `Submit the pairings for all ${holeCount} holes`
+                        : 'Submit the 4-balls'}
               </button>
             </div>
             <p className="text-center text-xs leading-snug text-chalk-500">
@@ -361,12 +467,23 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
       <SectionTitle>Who you are playing against</SectionTitle>
       <div className="card px-3.5 py-3">
         <p className="text-xs leading-snug text-chalk-400">
-          A 4-ball is who you walk with. It is not the same as the match. Today is{' '}
-          <span className="text-chalk-200">{describeRoundFormat(matches)}</span>
-          {matches.length > 1
-            ? ', so a single 4-ball can contain more than one match.'
-            : '.'}{' '}
-          Changing the groups here does not change who is playing whom.
+          {derived ? (
+            <>
+              Today is <span className="text-chalk-200">{describeRoundFormat(matches)}</span>, played
+              by the same pairs the whole way round — so on this round the 4-balls above{' '}
+              <span className="text-chalk-200">are</span> the matchups, and there is nothing separate
+              to set.
+            </>
+          ) : (
+            <>
+              A 4-ball is who you walk with. It is not the same as the match. Today is{' '}
+              <span className="text-chalk-200">{describeRoundFormat(matches)}</span>
+              {matches.length > 1
+                ? ', so a single 4-ball can contain more than one match.'
+                : '.'}{' '}
+              Changing the groups here does not change who is playing whom.
+            </>
+          )}
         </p>
         <ul className="mt-2.5 space-y-1.5 border-t border-white/6 pt-2.5">
           {matches.map((match) => (
@@ -383,12 +500,16 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
             <li className="text-xs text-chalk-500">No matches set up for this round yet.</li>
           )}
         </ul>
-        <p className="mt-2 text-xs text-chalk-500">
-          Who plays whom is edited separately, and is also open to everyone.
-        </p>
-        <Link href={`/round/${round.id}/matchups`} className="btn-ghost mt-2 w-full !py-2 text-xs">
-          Edit matchups
-        </Link>
+        {!derived && (
+          <>
+            <p className="mt-2 text-xs text-chalk-500">
+              Who plays whom is edited separately, and is also open to everyone.
+            </p>
+            <Link href={`/round/${round.id}/matchups`} className="btn-ghost mt-2 w-full !py-2 text-xs">
+              Edit matchups
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );

@@ -153,9 +153,10 @@ describe('planRound', () => {
   });
 
   it('reports the allowance actually in force, override or not', () => {
-    const standard = match({ format: 'two_man_scramble', startHole: 1, endHole: 9 });
+    // Foursomes has no fixed tournament rule, so an override applies.
+    const standard = match({ format: 'foursomes', startHole: 1, endHole: 9 });
     const custom = match({
-      format: 'two_man_scramble',
+      format: 'foursomes',
       startHole: 10,
       endHole: 18,
       allowanceOverride: { weights: [0.5, 0.25], rounding: 'floor' },
@@ -171,6 +172,22 @@ describe('planRound', () => {
     expect(plan.segments[0].allowance.weights).toEqual([0.5, 0.5]);
     expect(plan.segments[1].hasOwnAllowance).toBe(true);
     expect(plan.segments[1].allowance).toEqual({ weights: [0.5, 0.25], rounding: 'floor' });
+  });
+
+  it('does not claim a fixed format has its own allowance', () => {
+    // The override is stored but ignored, so reporting it as "own" would show
+    // a number the engine never applies.
+    const fixed = match({
+      format: 'two_man_scramble',
+      startHole: 1,
+      endHole: 18,
+      allowanceOverride: { weights: [0.35, 0.15], rounding: 'nearest' },
+    });
+    const plan = planRound([fixed], lookup({ [fixed.id]: sides(fixed.id, ['p1', 'p2'], ['p3', 'p4']) }), {
+      settings,
+    });
+    expect(plan.segments[0].hasOwnAllowance).toBe(false);
+    expect(plan.segments[0].allowance).toEqual({ weights: [0.5, 0.5], rounding: 'floor' });
   });
 });
 

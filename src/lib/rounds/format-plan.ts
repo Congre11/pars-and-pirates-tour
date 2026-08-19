@@ -17,6 +17,7 @@ import {
   FORMAT_SHORT_LABELS,
   PLAYERS_PER_SIDE,
   allowanceForMatch,
+  isFixedAllowance,
   type HandicapAllowance,
   type Match,
   type MatchSide,
@@ -109,7 +110,9 @@ export function planRound(
     shortLabel: FORMAT_SHORT_LABELS[match.format],
     holeCount: Math.max(0, match.endHole - match.startHole + 1),
     allowance: allowanceForMatch(match, settings),
-    hasOwnAllowance: match.allowanceOverride !== null,
+    // A fixed format ignores its override, so it does not "have its own" —
+    // saying otherwise would show a number the engine never applies.
+    hasOwnAllowance: match.allowanceOverride !== null && !isFixedAllowance(match.format),
   }));
 
   // --- Per-match sanity ----------------------------------------------------

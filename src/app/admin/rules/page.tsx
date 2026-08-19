@@ -4,18 +4,16 @@ import { useTour } from '@/lib/data/provider';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { NumberField, SelectField, ToggleField } from '@/components/admin/fields';
 import { SectionTitle } from '@/components/ui';
-import { FORMAT_LABELS, type MatchFormat, type TourSettings } from '@/lib/types';
+import {
+  FIXED_ALLOWANCE_HELP,
+  FORMAT_LABELS,
+  type MatchFormat,
+  type TourSettings,
+} from '@/lib/types';
 
-const ALLOWANCE_HELP: Record<MatchFormat, string> = {
+const ALLOWANCE_HELP: Partial<Record<MatchFormat, string>> = {
   team_scramble:
     'Applied to the four course handicaps sorted lowest to highest. The common setting is 20 / 15 / 10 / 5%.',
-  better_ball:
-    'Applied to each player individually. This tour plays off 100% — the lowest player in the match plays off zero and the other three receive the difference.',
-  singles: 'Applied to each player individually. WHS singles match play is 100%.',
-  two_man_scramble:
-    'Applied to the two course handicaps, lowest first. This tour plays 50 / 50 rounded down, i.e. floor((CH1 + CH2) / 2) for the pair.',
-  shamble:
-    'Applied to the two course handicaps like a scramble — the pair play off one combined handicap even though each finishes their own ball. This tour plays 50 / 50 rounded down.',
   foursomes: 'Applied to both course handicaps. WHS foursomes is 50% of the combined total.',
 };
 
@@ -98,9 +96,34 @@ export default function AdminRulesPage() {
         </div>
       </div>
 
-      <SectionTitle>Allowances by format</SectionTitle>
+      {/* --- The four fixed rules -------------------------------------------
+          Read-only on purpose. These used to be editable and stored, which
+          meant a settings record written before the rules were agreed kept
+          silently overriding them — the scoreboard was wrong with nothing in
+          the code wrong. They now live in FIXED_ALLOWANCES, and the engine
+          never reads the stored value for these formats. */}
+      <SectionTitle>Fixed by the tournament rules</SectionTitle>
       <div className="space-y-2">
-        {(Object.keys(FORMAT_LABELS) as MatchFormat[]).map((format) => {
+        {(Object.keys(FIXED_ALLOWANCE_HELP) as MatchFormat[]).map((format) => (
+          <div key={format} className="card px-3.5 py-3">
+            <h3 className="flex items-center justify-between gap-2 text-sm font-bold">
+              <span>{FORMAT_LABELS[format]}</span>
+              <span className="chip bg-fairway-500/20 text-fairway-300">FIXED</span>
+            </h3>
+            <p className="mt-1 text-xs leading-snug text-chalk-500">
+              {FIXED_ALLOWANCE_HELP[format]}
+            </p>
+          </div>
+        ))}
+        <p className="px-1 text-xs leading-snug text-chalk-600">
+          These four are set in code rather than here, so a stored setting cannot change how the
+          tournament scores. Changing one is a code change and a deploy, deliberately.
+        </p>
+      </div>
+
+      <SectionTitle>Editable allowances</SectionTitle>
+      <div className="space-y-2">
+        {(Object.keys(ALLOWANCE_HELP) as MatchFormat[]).map((format) => {
           const allowance = settings.allowances[format];
           return (
             <div key={format} className="card px-3.5 py-3.5">

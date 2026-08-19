@@ -6,9 +6,12 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { Accordion, NumberField, SelectField, TextField } from '@/components/admin/fields';
 import { SectionTitle } from '@/components/ui';
 import {
+  FIXED_ALLOWANCE_HELP,
   FORMAT_LABELS,
   PLAYERS_PER_SIDE,
+  allowanceFor,
   allowanceForMatch,
+  isFixedAllowance,
   isTeamBallFormat,
   type HandicapAllowance,
   type Match,
@@ -365,12 +368,27 @@ function AllowanceEditor({ match }: { match: Match }) {
   const settings = snapshot.tour.settings;
   const effective = allowanceForMatch(match, settings);
   const isOwn = match.allowanceOverride !== null;
-  const formatDefault = settings.allowances[match.format];
+  const formatDefault = allowanceFor(match.format, settings);
 
   const save = (allowance: HandicapAllowance | null) =>
     update('matches', match.id, { allowanceOverride: allowance });
 
   const percentages = effective.weights.map((w) => `${Math.round(w * 100)}%`).join(' / ');
+
+  // Four formats are fixed tournament rules rather than settings. An override
+  // on one of those would be stored and then ignored, which is worse than not
+  // offering it — the screen would promise a change the engine never makes.
+  if (isFixedAllowance(match.format)) {
+    return (
+      <div className="rounded-xl bg-white/4 px-3 py-3">
+        <span className="block text-sm font-semibold">Handicap allowance</span>
+        <span className="mt-0.5 block text-xs leading-snug text-chalk-500">
+          {FIXED_ALLOWANCE_HELP[match.format]} Fixed by the tournament rules, so it is not editable
+          here or in Rules.
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl bg-white/4 px-3 py-3">

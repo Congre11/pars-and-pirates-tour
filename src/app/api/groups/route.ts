@@ -12,6 +12,11 @@ interface GroupsBody {
   updatedBy?: string;
   /** True when this save is a submission, not a draft. */
   confirm?: boolean;
+  /** Pairings derived from these same groups — see SaveGroupsInput. */
+  pairings?: {
+    sides?: Array<{ id?: string; playerIds?: string[] }>;
+    matchIds?: string[];
+  };
 }
 
 /** Rough UUID check, so a malformed id cannot reach Postgres as a uuid[]. */
@@ -96,6 +101,48 @@ export async function POST(request: Request) {
       .not('id', 'in', `(${keptIds.join(',')})`);
     if (deleteError) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+  }
+
+  // --- Pairings that follow the 4-balls ------------------------------------
+  // For a round where the 4-balls ARE the pairings (Day 3), the sides for
+  // every section are written in the same request, so holes 1-6, 7-12 and
+  // 13-18 cannot end up disagreeing about who is playing whom.
+  //
+  // Still narrow: player_ids on match_sides and the two confirmation columns
+  // on matches. A format, hole range or points value is not reachable here.
+  const pairings = body.pairings;
+  if (pairings) {
+    const sides = Array.isArray(pairings.sides) ? pairings.sides : [];
+    if (sides.length > 40) {
+      return NextResponse.json({ error: 'Too many sides in one request.' }, { status: 400 });
+    }
+    for (const side of sides) {
+      if (!side.id || !UUID.test(side.id)) {
+        return NextResponse.json({ error: 'Every side needs a valid id.' }, { status: 400 });
+      }
+      const playerIds = Array.isArray(side.playerIds)
+        ? side.playerIds.filter((id) => typeof id === 'string' && UUID.test(id))
+        : [];
+      const { error: sideError } = await supabase
+        .from('match_sides')
+        .update({ player_ids: playerIds })
+        .eq('id', side.id);
+      if (sideError) return NextResponse.json({ error: sideError.message }, { status: 500 });
+    }
+
+    const matchIds = (Array.isArray(pairings.matchIds) ? pairings.matchIds : []).filter(
+      (id) => typeof id === 'string' && UUID.test(id),
+    );
+    if (matchIds.length > 0) {
+      const { error: matchError } = await supabase
+        .from('matches')
+        .update({
+          pairings_confirmed_at: confirmed ? updatedAt : null,
+          pairings_confirmed_by: confirmed ? updatedBy.slice(0, 60) : null,
+        })
+        .in('id', matchIds);
+      if (matchError) return NextResponse.json({ error: matchError.message }, { status: 500 });
     }
   }
 

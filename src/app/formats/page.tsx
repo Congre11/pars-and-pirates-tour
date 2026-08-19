@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTour } from '@/lib/data/provider';
 import { PageHeader, SectionTitle } from '@/components/ui';
 import { points as fmtPoints } from '@/lib/format';
-import { FORMAT_LABELS, type MatchFormat } from '@/lib/types';
+import { FORMAT_LABELS, allowanceFor, type MatchFormat } from '@/lib/types';
 
 /** Plain-English rules for each format, plus the handicap allowance in force. */
 const RULES: Record<MatchFormat, { how: string; strokes: string }> = {
@@ -103,7 +103,7 @@ export default function FormatsPage() {
       <SectionTitle>How each format works</SectionTitle>
       <div className="space-y-3">
         {(Object.keys(RULES) as MatchFormat[]).map((format) => {
-          const allowance = settings.allowances[format];
+          const allowance = allowanceFor(format, settings);
           const used = snapshot.matches.some((m) => m.format === format);
           return (
             <div key={format} className={`card px-4 py-3.5 ${used ? '' : 'opacity-60'}`}>

@@ -7,7 +7,7 @@ import { useSession } from '@/lib/auth/session-provider';
 import { ScoreEntry } from '@/components/ScoreEntry';
 import { ScorecardTable } from '@/components/ScorecardTable';
 import { PageHeader, SectionTitle, Warning } from '@/components/ui';
-import { FORMAT_LABELS } from '@/lib/types';
+import { FORMAT_LABELS, allowanceForMatch } from '@/lib/types';
 import { courseHandicapLabel, handicapLabel } from '@/lib/format';
 import { ordinal } from '@/lib/tour-helpers';
 
@@ -174,7 +174,7 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
           <p className="mt-2 border-t border-white/6 pt-2 text-[0.68rem] text-chalk-500">
             {tee.name} tees · CR {tee.courseRating} / Slope {tee.slopeRating} ·{' '}
             {snapshot.tour.settings.handicapsEnabled
-              ? `${Math.round((snapshot.tour.settings.allowances[match.format].weights[0] ?? 1) * 100)}% allowance`
+              ? `${Math.round((allowanceForMatch(match, snapshot.tour.settings).weights[0] ?? 1) * 100)}% allowance`
               : 'Playing off scratch'}
           </p>
         )}
