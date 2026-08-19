@@ -4,7 +4,9 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTour } from '@/lib/data/provider';
+import { useSession } from '@/lib/auth/session-provider';
 import { Avatar, EmptyState, PageHeader } from '@/components/ui';
+import { describeConfirmation, matchupsConfirmation } from '@/lib/rounds/confirmation';
 import {
   assignToSide,
   checkMatchups,
@@ -40,6 +42,7 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
     playerById,
     teamById,
   } = useTour();
+  const { session } = useSession();
 
   const round = roundById(roundId);
   const matches = matchesForRound(roundId);
@@ -104,6 +107,7 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
           playerById={playerById}
           teamById={teamById}
           multiSection={sections.length > 1}
+          me={session?.playerName || 'A player'}
         />
       ))}
 
@@ -129,6 +133,7 @@ function SectionEditor({
   playerById,
   teamById,
   multiSection,
+  me,
 }: {
   section: Section;
   open: boolean;
@@ -140,11 +145,13 @@ function SectionEditor({
   playerById: ReturnType<typeof useTour>['playerById'];
   teamById: ReturnType<typeof useTour>['teamById'];
   multiSection: boolean;
+  /** The name a submission is recorded against. */
+  me: string;
 }) {
   const saved = draftSidesFor(section, sidesForMatch);
   const [draft, setDraft] = useState<DraftSide[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [state, setState] = useState<'idle' | 'saving' | 'submitting' | 'saved' | 'error'>('idle');
   const [errorText, setErrorText] = useState<string | null>(null);
 
   // Saved rows stay the source of truth until this device edits, so another
@@ -180,11 +187,21 @@ function SectionEditor({
     setSelected(null);
   };
 
-  const save = async () => {
-    setState('saving');
+  // One person submitting is enough. Saving without submitting keeps the
+  // section a draft, and editing a submitted section clears the stamp — the
+  // stores do that, so nothing here has to remember to.
+  const confirmation = matchupsConfirmation(section.matches);
+
+  const save = async (confirm: boolean) => {
+    setState(confirm ? 'submitting' : 'saving');
     setErrorText(null);
     try {
-      await saveMatchups(sides.map((s) => ({ id: s.id, playerIds: s.playerIds })));
+      await saveMatchups({
+        sides: sides.map((s) => ({ id: s.id, playerIds: s.playerIds })),
+        matchIds: section.matches.map((m) => m.id),
+        confirm,
+        confirmedBy: me,
+      });
       setState('saved');
       setDraft(null);
       setTimeout(() => setState('idle'), 1800);
@@ -316,21 +333,46 @@ function SectionEditor({
             </ul>
           )}
 
-          <button
-            onClick={save}
-            disabled={!dirty || state === 'saving'}
-            className="btn-primary w-full disabled:opacity-40"
-          >
-            {state === 'saving'
-              ? 'Saving…'
-              : state === 'saved'
-                ? 'Saved ✓'
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => save(false)}
+              disabled={!dirty || state === 'saving' || state === 'submitting'}
+              className="btn-ghost disabled:opacity-40"
+            >
+              {state === 'saving'
+                ? 'Saving…'
                 : dirty
                   ? multiSection
                     ? `Save ${section.label}`
-                    : 'Save the matchups'
-                  : 'No changes to save'}
-          </button>
+                    : 'Save'
+                  : 'No changes'}
+            </button>
+            <button
+              onClick={() => save(true)}
+              disabled={
+                check.issues.some((i) => i.level === 'error') ||
+                state === 'saving' ||
+                state === 'submitting' ||
+                (confirmation.state === 'confirmed' && !dirty)
+              }
+              className="btn-primary disabled:opacity-40"
+            >
+              {state === 'submitting'
+                ? 'Submitting…'
+                : state === 'saved'
+                  ? 'Saved ✓'
+                  : confirmation.state === 'confirmed' && !dirty
+                    ? 'Submitted ✓'
+                    : 'Submit'}
+            </button>
+          </div>
+
+          <p className="text-center text-xs text-chalk-500">
+            {dirty && confirmation.state === 'confirmed'
+              ? 'Edited since it was submitted — submit again to confirm.'
+              : describeConfirmation(confirmation, 'these matchups')}
+            {confirmation.state !== 'confirmed' && ' · one person submitting is enough.'}
+          </p>
 
           {dirty && (
             <button

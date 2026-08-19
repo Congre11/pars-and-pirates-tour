@@ -45,7 +45,7 @@ function match(overrides: Partial<Match> = {}): Match {
   n += 1;
   return {
     id: `m${n}`, roundId: 'r1', name: `Match ${n}`, format: 'better_ball',
-    startHole: 1, endHole: 18, pointsValue: 1, allowanceOverride: null,
+    startHole: 1, endHole: 18, pointsValue: 1, allowanceOverride: null, pairingsConfirmedAt: null, pairingsConfirmedBy: null,
     status: 'upcoming', sortOrder: n, ...overrides,
   };
 }

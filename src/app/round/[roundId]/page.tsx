@@ -4,10 +4,16 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useTour } from '@/lib/data/provider';
 import { MatchTile } from '@/components/MatchTile';
-import { StrokesTable } from '@/components/StrokesTable';
+import { MatchHandicaps, StrokesTable } from '@/components/StrokesTable';
 import { EmptyState, PageHeader, SectionTitle, Warning } from '@/components/ui';
 import { useSession } from '@/lib/auth/session-provider';
 import { formatDate, points as fmtPoints } from '@/lib/format';
+import {
+  describeConfirmation,
+  groupsConfirmation,
+  matchupsConfirmation,
+  type Confirmation,
+} from '@/lib/rounds/confirmation';
 import { FORMAT_LABELS } from '@/lib/types';
 
 /**
@@ -111,6 +117,7 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
       {/* --- 4-balls: who walks together. Editable by everyone. ------------- */}
       <SectionTitle>4-balls</SectionTitle>
       <div className="space-y-2">
+        <ConfirmationLine confirmation={groupsConfirmation(fourBalls)} noun="these 4-balls" />
         {fourBalls.length === 0 ? (
           <div className="card px-3.5 py-3 text-sm text-chalk-400">
             No 4-balls set for this round yet.
@@ -175,7 +182,10 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
 
       {/* --- Who gets shots, and where -------------------------------------- */}
       <SectionTitle>Handicaps &amp; strokes</SectionTitle>
-      <StrokesTable round={round} />
+      <div className="space-y-2">
+        <MatchHandicaps round={round} />
+        <StrokesTable round={round} />
+      </div>
 
       {/* --- Matches -------------------------------------------------------- */}
       {matches.length === 0 ? (
@@ -202,6 +212,10 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
                   : `Holes ${first.startHole}–${first.endHole} · ${FORMAT_LABELS[first.format]}`}
               </SectionTitle>
               <div className="space-y-2">
+                <ConfirmationLine
+                  confirmation={matchupsConfirmation(groupMatches)}
+                  noun="these matchups"
+                />
                 {groupMatches.map((match) => (
                   <MatchTile key={match.id} matchId={match.id} showFormat={false} />
                 ))}
@@ -218,6 +232,35 @@ export default function RoundPage({ params }: { params: Promise<{ roundId: strin
       )}
     </div>
   );
+
+  /**
+   * Whether the pairings in front of you are settled.
+   *
+   * One person submitting is enough, and any later edit clears it — so a green
+   * line means what is on screen is what was agreed, and an amber one means
+   * somebody is still moving people about.
+   */
+  function ConfirmationLine({
+    confirmation,
+    noun,
+  }: {
+    confirmation: Confirmation;
+    noun: string;
+  }) {
+    const confirmed = confirmation.state === 'confirmed';
+    return (
+      <p
+        className={`rounded-xl border px-3 py-2 text-xs leading-snug ${
+          confirmed
+            ? 'border-fairway-400/30 bg-fairway-500/10 text-fairway-300'
+            : 'border-brass-500/30 bg-brass-500/10 text-brass-300'
+        }`}
+      >
+        {confirmed ? '✓ ' : '! '}
+        {describeConfirmation(confirmation, noun)}
+      </p>
+    );
+  }
 
   function DayScore({ team, value }: { team: (typeof snapshot.teams)[number]; value: number }) {
     return (

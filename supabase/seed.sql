@@ -13,7 +13,7 @@ begin;
 -- Captain references are set after players exist.
 set constraints all deferred;
 insert into tours (id, name, year, start_date, end_date, location, status, trophy_name, settings) values
-  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[0.9],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.35,0.15],"rounding":"nearest"},"shamble":{"weights":[0.9],"rounding":"nearest"},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
+  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[1],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.5,0.5],"rounding":"floor"},"shamble":{"weights":[0.5,0.5],"rounding":"floor"},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
 on conflict (id) do update set
   name = excluded.name,
   year = excluded.year,
@@ -65,7 +65,7 @@ on conflict (id) do update set
 ;
 
 insert into courses (id, tour_id, name, location, source_url, notes, routing, nine_names, data_verified, verified_at, verified_by, source_notes) values
-  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo — Queen’s + Prince’s', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — 4-man Team Scramble. Tee times 11:00.', 'Queen’s loop (holes 1–9), then Prince’s loop (holes 10–18)', array['Queen’s', 'Prince’s']::text[], false, null, null, null),
+  ('b494460c-9465-4986-8c5f-04d89a469d5e', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Faldo — Queen’s + Prince’s', 'Cornelia Golf Club, Belek, Turkey', null, 'Day 1 — two 2-man Scramble matches. Tee times 11:00.', 'Queen’s loop (holes 1–9), then Prince’s loop (holes 10–18)', array['Queen’s', 'Prince’s']::text[], false, null, null, null),
   ('b53cfe96-8326-4678-8796-7aa2ac0112c0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Carya Golf Course', 'Carya Golf Club, Belek, Turkey', null, 'Day 2 — Better Ball Match Play. Twilight tee time 18:27, floodlit finish.', null, null, false, null, null, null),
   ('e17d413e-7ca8-4498-8928-c142e15860f0', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'PGA Sultan', 'Antalya Golf Club, Belek, Turkey', null, 'Day 3 — one course, three six-hole formats: H1-6 Two-man Scramble, H7-12 Shamble, H13-18 Better Ball.', null, null, false, null, null, null),
   ('265c5394-11e7-47d2-8ebd-ac38dc39670a', '215244a1-d717-445b-8ddf-4dbd03d820a3', 'Montgomerie Maxx Royal', 'Montgomerie Maxx Royal, Belek, Turkey', null, 'Day 4 — Singles Match Play. Four concurrent matches. Trophy presented after the round.', null, null, false, null, null, null)
@@ -189,7 +189,7 @@ on conflict (id) do update set
 ;
 
 insert into rounds (id, tour_id, day_no, name, date, course_id, tee_id, format_label, tee_time, status, notes, sort_order) values
-  ('8296c225-7362-4e9f-80a3-53118e5c9757', '215244a1-d717-445b-8ddf-4dbd03d820a3', 1, 'Day 1 — Scramble', '2026-08-29', 'b494460c-9465-4986-8c5f-04d89a469d5e', '8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', '4-Man Team Scramble', '11:00', 'upcoming', 'Breakfast 08:00–09:30. Springboks v New Zealand at 17:00 — Springbok jerseys are a must. Day 2 teams announced after the rugby.', 0),
+  ('8296c225-7362-4e9f-80a3-53118e5c9757', '215244a1-d717-445b-8ddf-4dbd03d820a3', 1, 'Day 1 — Scramble', '2026-08-29', 'b494460c-9465-4986-8c5f-04d89a469d5e', '8e3c7d29-97ef-4b57-80b1-a2bd3371fe2f', '2-Man Scramble', '11:00', 'upcoming', 'Breakfast 08:00–09:30. Springboks v New Zealand at 17:00 — Springbok jerseys are a must. Day 2 teams announced after the rugby.', 0),
   ('7f96bd6c-7462-4032-8da3-4e588f5c98ea', '215244a1-d717-445b-8ddf-4dbd03d820a3', 2, 'Day 2 — Better Ball', '2026-08-30', 'b53cfe96-8326-4678-8796-7aa2ac0112c0', '9f42c02f-b37a-414d-8d6a-d4430318e655', 'Better Ball Match Play', '18:27', 'upcoming', 'Sleep in. Free day. First fines meeting after the round. Out to town — LARGE.', 1),
   ('8096beff-7562-41c5-8ea3-4feb905c9a7d', '215244a1-d717-445b-8ddf-4dbd03d820a3', 3, 'Day 3 — Triple Threat', '2026-09-01', 'e17d413e-7ca8-4498-8928-c142e15860f0', '5e59aef1-ffb5-430f-85a2-f92d2e2b2c87', 'H1–6 Scramble · H7–12 Shamble · H13–18 Better Ball', '12:00', 'upcoming', 'Breakfast 09:00–11:00. 19:00 captains announce the Day 4 singles line-up. Free evening.', 2),
   ('7d96ba46-6e62-46c0-83a3-57ca895c8f78', '215244a1-d717-445b-8ddf-4dbd03d820a3', 4, 'Day 4 — Singles', '2026-09-02', '265c5394-11e7-47d2-8ebd-ac38dc39670a', '6da36679-2241-4d5b-88fe-e7952820ff33', 'Singles Match Play', '10:30', 'upcoming', 'Breakfast 07:00–09:00. Trophy presentation, closing ceremony and final fines after the round. Out in town.', 3)
@@ -207,38 +207,41 @@ on conflict (id) do update set
   sort_order = excluded.sort_order
 ;
 
-insert into round_groups (id, round_id, name, player_ids, sort_order, updated_by, updated_at) values
-  ('de196008-2cb4-4bb6-8047-430c1ed7b14e', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('df19619b-2db4-4d49-8147-449f1fd7b2e1', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('fe6cd0ad-0990-4767-8072-dac1dbb2da9f', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('fd6ccf1a-0890-45d4-8f72-d92edab2d90c', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('f7df21c6-11b1-4578-89e5-5e3ae511bd30', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('f8df2359-12b1-470b-8ae5-5fcde611bec3', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('9947edfb-77cf-41a1-8234-aa0749f1d4d9', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z'),
-  ('9847ec68-76cf-400e-8134-a87448f1d346', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z')
+insert into round_groups (id, round_id, name, player_ids, sort_order, updated_by, updated_at, confirmed_at, confirmed_by) values
+  ('de196008-2cb4-4bb6-8047-430c1ed7b14e', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('df19619b-2db4-4d49-8147-449f1fd7b2e1', '8296c225-7362-4e9f-80a3-53118e5c9757', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('fe6cd0ad-0990-4767-8072-dac1dbb2da9f', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('fd6ccf1a-0890-45d4-8f72-d92edab2d90c', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('f7df21c6-11b1-4578-89e5-5e3ae511bd30', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('f8df2359-12b1-470b-8ae5-5fcde611bec3', '8096beff-7562-41c5-8ea3-4feb905c9a7d', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('9947edfb-77cf-41a1-8234-aa0749f1d4d9', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 1', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', '1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], 0, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null),
+  ('9847ec68-76cf-400e-8134-a87448f1d346', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', '4-Ball 2', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], 1, 'Seeded default', '2026-08-17T00:00:00.000Z', null, null)
 on conflict (id) do update set
   round_id = excluded.round_id,
   name = excluded.name,
   player_ids = excluded.player_ids,
   sort_order = excluded.sort_order,
   updated_by = excluded.updated_by,
-  updated_at = excluded.updated_at
+  updated_at = excluded.updated_at,
+  confirmed_at = excluded.confirmed_at,
+  confirmed_by = excluded.confirmed_by
 ;
 
-insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, allowance_override, status, sort_order) values
-  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'The Scramble', 'team_scramble', 1, 18, 2, null, 'upcoming', 0),
-  ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, null, 'upcoming', 0),
-  ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, null, 'upcoming', 1),
-  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 0),
-  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 1),
-  ('c35662ea-0002-42d0-879a-b34e0b6d35b8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 1', 'shamble', 7, 12, 0.5, null, 'upcoming', 2),
-  ('c2566157-0302-4789-869a-b1bb0e6d3a71', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 2', 'shamble', 7, 12, 0.5, null, 'upcoming', 3),
-  ('7ad6280b-ecd9-4785-8f91-39bf786b835d', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 1', 'better_ball', 13, 18, 0.5, null, 'upcoming', 4),
-  ('7bd6299e-e9d9-42cc-8091-3b52756b7ea4', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 2', 'better_ball', 13, 18, 0.5, null, 'upcoming', 5),
-  ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, null, 'upcoming', 0),
-  ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, null, 'upcoming', 1),
-  ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, null, 'upcoming', 2),
-  ('72dc0afa-ca37-4ee4-8417-bbde4a8b81bc', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 4', 'singles', 1, 18, 1, null, 'upcoming', 3)
+insert into matches (id, round_id, name, format, start_hole, end_hole, points_value, allowance_override, status, sort_order, pairings_confirmed_at, pairings_confirmed_by) values
+  ('4a1699dc-9017-483e-8503-19a0f5721536', '8296c225-7362-4e9f-80a3-53118e5c9757', 'Scramble 1', 'two_man_scramble', 1, 18, 1, null, 'upcoming', 0, null, null),
+  ('4d169e95-8f17-46ab-8803-1e59f47213a3', '8296c225-7362-4e9f-80a3-53118e5c9757', 'Scramble 2', 'two_man_scramble', 1, 18, 1, null, 'upcoming', 1, null, null),
+  ('f6fcf54f-e606-4055-881d-6413c194152d', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 1', 'better_ball', 1, 18, 1, null, 'upcoming', 0, null, null),
+  ('f7fcf6e2-e306-4b9c-891d-65a6be941074', '7f96bd6c-7462-4032-8da3-4e588f5c98ea', 'Match 2', 'better_ball', 1, 18, 1, null, 'upcoming', 1, null, null),
+  ('3b6ce621-ffe7-4c53-8f89-5d958b79382b', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 1', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 0, null, null),
+  ('386ce168-00e7-4de6-8c89-58dc8c7939be', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Scramble 2', 'two_man_scramble', 1, 6, 0.5, null, 'upcoming', 1, null, null),
+  ('c35662ea-0002-42d0-879a-b34e0b6d35b8', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 1', 'shamble', 7, 12, 0.5, null, 'upcoming', 2, null, null),
+  ('c2566157-0302-4789-869a-b1bb0e6d3a71', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Shamble 2', 'shamble', 7, 12, 0.5, null, 'upcoming', 3, null, null),
+  ('7ad6280b-ecd9-4785-8f91-39bf786b835d', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 1', 'better_ball', 13, 18, 0.5, null, 'upcoming', 4, null, null),
+  ('7bd6299e-e9d9-42cc-8091-3b52756b7ea4', '8096beff-7562-41c5-8ea3-4feb905c9a7d', 'Better Ball 2', 'better_ball', 13, 18, 0.5, null, 'upcoming', 5, null, null),
+  ('6fdc0641-c737-4a2b-8917-c3bd478b7d03', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 1', 'singles', 1, 18, 1, null, 'upcoming', 0, null, null),
+  ('6cdc0188-c837-4bbe-8617-bf04488b7e96', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 2', 'singles', 1, 18, 1, null, 'upcoming', 1, null, null),
+  ('6ddc031b-c937-4d51-8717-c097498b8029', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 3', 'singles', 1, 18, 1, null, 'upcoming', 2, null, null),
+  ('72dc0afa-ca37-4ee4-8417-bbde4a8b81bc', '7d96ba46-6e62-46c0-83a3-57ca895c8f78', 'Match 4', 'singles', 1, 18, 1, null, 'upcoming', 3, null, null)
 on conflict (id) do update set
   round_id = excluded.round_id,
   name = excluded.name,
@@ -248,12 +251,16 @@ on conflict (id) do update set
   points_value = excluded.points_value,
   allowance_override = excluded.allowance_override,
   status = excluded.status,
-  sort_order = excluded.sort_order
+  sort_order = excluded.sort_order,
+  pairings_confirmed_at = excluded.pairings_confirmed_at,
+  pairings_confirmed_by = excluded.pairings_confirmed_by
 ;
 
 insert into match_sides (id, match_id, team_id, player_ids, handicap_override, sort_order) values
-  ('bf98bd2e-618f-48b0-8acc-7fca9746d8f8', '4a1699dc-9017-483e-8503-19a0f5721536', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44', 'a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
-  ('c098bec1-628f-4a43-8bcc-815d9846da8b', '4a1699dc-9017-483e-8503-19a0f5721536', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e', 'd0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
+  ('bf98bd2e-618f-48b0-8acc-7fca9746d8f8', '4a1699dc-9017-483e-8503-19a0f5721536', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
+  ('c098bec1-628f-4a43-8bcc-815d9846da8b', '4a1699dc-9017-483e-8503-19a0f5721536', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
+  ('fc74afff-8320-4dd5-87a8-729b38d6b49d', '4d169e95-8f17-46ab-8803-1e59f47213a3', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
+  ('fb74ae6c-8220-4c42-86a8-710837d6b30a', '4d169e95-8f17-46ab-8803-1e59f47213a3', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['d0d7d186-4ba3-421c-8dee-da02904fb2b4', '2afb1850-1eb2-487a-82dd-a0e4bcd08fb2']::uuid[], null, 1),
   ('965ac735-9b2f-46d3-8f85-807129c0bb5b', 'f6fcf54f-e606-4055-881d-6413c194152d', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['6e3b7aa8-c4f8-44de-8f8f-886476c1e346', '3de9536e-bd46-406c-8dec-ce12a2436a44']::uuid[], null, 0),
   ('955ac5a2-9a2f-4540-8e85-7ede28c0b9c8', 'f6fcf54f-e606-4055-881d-6413c194152d', 'd9b745b4-6f08-49f6-81a3-8ec0f3c866fe', array['1a28dd06-c593-4144-812b-a8225ca4191c', 'a5145540-14c1-45b6-8a5f-37941b13fb2e']::uuid[], null, 1),
   ('f4caeb90-de53-4d82-8e1c-b43cece4c88a', 'f7fcf6e2-e306-4b9c-891d-65a6be941074', '3ff5ec82-b3c2-4850-84cb-a7d690c56258', array['a9d58c17-2d27-443d-818b-44e3dbd367a5', '9339dbe8-cae3-4cee-8e39-cedca5102a86']::uuid[], null, 0),
@@ -293,7 +300,7 @@ insert into itinerary_items (id, tour_id, date, start_time, end_time, title, loc
   ('486fb2f0-9158-45ca-895e-e9ec04ac43f2', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-28', '17:00', null, 'Driving range / practice', 'Practice facility', 'Loosen up after the flight. Shake off the travel.', 'golf', null, 3),
   ('1a76c400-39c9-4f1e-8354-603ca6af2c16', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-28', '20:00', null, 'Opening ceremony & first dinner', 'Hotel', 'At the hotel due to late arrivals. Team reveal, captains’ speeches. Staying at the hotel tonight.', 'ceremony', null, 4),
   ('9aa58ec6-b445-400c-89bb-8ce2b8b5fdd4', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-29', '08:00', '09:30', 'Breakfast', 'Hotel', null, 'meal', null, 5),
-  ('345dc9b3-2189-4739-82eb-ce8f3b93db71', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-29', '11:00', null, 'GOLF DAY 1 — Faldo Course', 'Cornelia Golf Club, Belek', '4-Man Team Scramble. Tee off 11:00.', 'golf', '8296c225-7362-4e9f-80a3-53118e5c9757', 6),
+  ('345dc9b3-2189-4739-82eb-ce8f3b93db71', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-29', '11:00', null, 'GOLF DAY 1 — Faldo Course', 'Cornelia Golf Club, Belek', '2-Man Scramble — two matches. Tee off 11:00.', 'golf', '8296c225-7362-4e9f-80a3-53118e5c9757', 6),
   ('64e54974-f435-4d6e-898b-6848245a16d6', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-29', '17:00', null, 'Springboks v New Zealand', 'Hotel bar', 'Springbok jerseys are a must. Non-negotiable.', 'sport', null, 7),
   ('7a67dba4-6744-45a2-82c9-db20cda7565a', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-29', '19:30', null, 'Day 2 teams announced', 'Hotel', 'Captains announce the Better Ball pairings after the rugby.', 'ceremony', null, 8),
   ('f0e4c8ed-c8cc-47f3-8876-a7692f0a425b', '215244a1-d717-445b-8ddf-4dbd03d820a3', '2026-08-30', null, null, 'Sleep in — free morning', null, 'No alarms. Free day until the late tee time.', 'rest', null, 9),
@@ -333,7 +340,7 @@ on conflict (id) do update set
 
 commit;
 -- Sanity check — should report 2 teams, 8 players, 4 courses, 72 holes,
--- 4 rounds and 15 matches (worth 11 points in total).
+-- 4 rounds and 14 matches (worth 11 points in total).
 select 'teams' as entity, count(*) from teams
 union all select 'players', count(*) from players
 union all select 'courses', count(*) from courses

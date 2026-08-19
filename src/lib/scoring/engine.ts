@@ -11,7 +11,12 @@
  * `engine.test.ts`.
  */
 
-import { computeMatchHandicaps, strokesOnHole, type SideHandicapResult } from './handicap';
+import {
+  computeMatchHandicaps,
+  isPerPlayerFormat,
+  strokesForHoles,
+  type SideHandicapResult,
+} from './handicap';
 import {
   isTeamBallFormat,
   type Hole,
@@ -81,6 +86,12 @@ export interface MatchOutcome {
   sideStrokes: Record<string, Record<number, number>>;
   /** Stroke allocation per player id keyed by hole number. */
   playerStrokes: Record<string, Record<number, number>>;
+  /**
+   * The combined side handicap, before the match-play difference, for formats
+   * that play off one — floor((CH1 + CH2) / 2) for a scramble or shamble.
+   * Null for singles and better ball, where each player carries their own.
+   */
+  teamHandicaps: Record<string, number | null>;
 
   holesPlayed: number;
   holesRemaining: number;
@@ -150,6 +161,7 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   );
 
   const handicaps: Record<string, SideHandicapResult> = {};
+  const teamHandicaps: Record<string, number | null> = {};
   const sideStrokes: Record<string, Record<number, number>> = {};
   const playerStrokes: Record<string, Record<number, number>> = {};
   let hasMissingHandicap = false;
@@ -159,21 +171,20 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
     handicaps[side.id] = result;
     if (result.hasMissingIndex) hasMissingHandicap = true;
 
-    sideStrokes[side.id] = {};
-    for (const hole of holesInRange) {
-      sideStrokes[side.id][hole.holeNo] = strokesOnHole(
-        result.playingHandicap,
-        hole.strokeIndex,
-        holes.length || 18,
-      );
-    }
+    // Strokes are dealt across the holes this match actually plays, ranked by
+    // their real stroke index — so a six-hole block pays the whole difference
+    // rather than only the part that happens to fall under SI 6.
+    sideStrokes[side.id] = strokesForHoles(result.playingHandicap, holesInRange);
+
+    const perPlayer = isPerPlayerFormat(match.format);
+    teamHandicaps[side.id] = perPlayer ? null : result.rawPlayingHandicap;
 
     for (const playerId of side.playerIds) {
-      playerStrokes[playerId] = {};
-      const ph = result.playerPlayingHandicaps[playerId] ?? 0;
-      for (const hole of holesInRange) {
-        playerStrokes[playerId][hole.holeNo] = strokesOnHole(ph, hole.strokeIndex, holes.length || 18);
-      }
+      playerStrokes[playerId] = perPlayer
+        ? strokesForHoles(result.playerPlayingHandicaps[playerId] ?? 0, holesInRange)
+        : // One combined handicap for the side: a scramble has a single ball,
+          // and a shamble has two balls that both play off the team handicap.
+          { ...sideStrokes[side.id] };
     }
   });
 
@@ -382,6 +393,7 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
     handicaps,
     sideStrokes,
     playerStrokes,
+    teamHandicaps,
     holesPlayed,
     holesRemaining,
     leaderSideId,

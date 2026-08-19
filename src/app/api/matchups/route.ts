@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { getServiceSupabase } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -6,21 +7,30 @@ export const dynamic = 'force-dynamic';
 
 interface MatchupsBody {
   sides?: Array<{ id?: string; playerIds?: string[] }>;
+  /** The matches these sides belong to — what a confirmation is stamped on. */
+  matchIds?: string[];
+  /** True when this save is a submission, not a draft. */
+  confirm?: boolean;
+  confirmedBy?: string;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Change who is playing whom.
+ * Change who is playing whom, and optionally submit it for the round.
  *
- * Deliberately narrow: this route updates `match_sides.player_ids` and nothing
- * else. It cannot alter a format, a hole range, a points value or a handicap
- * allowance — those are set up once in Tour settings. So opening the matchups
- * to every player, which is the point, does not also open the scoring rules.
+ * Deliberately narrow: this route updates `match_sides.player_ids` plus the two
+ * confirmation columns on `matches`, and nothing else. It cannot alter a
+ * format, a hole range, a points value or a handicap allowance — those are set
+ * up once in Tour settings. So opening the matchups to every player, which is
+ * the point, does not also open the scoring rules.
  *
  * No PIN, like the rest of the app.
  */
 export async function POST(request: Request) {
+  // Read only to attribute a submission to a name; there is no gate.
+  const session = await getSession();
+
   const supabase = getServiceSupabase();
   if (!supabase) {
     return NextResponse.json(
@@ -58,6 +68,26 @@ export async function POST(request: Request) {
       .from('match_sides')
       .update({ player_ids: playerIds })
       .eq('id', side.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Stamp the matches these sides belong to. One person submitting is enough,
+  // so this is a plain write rather than a tally. A save that is not a
+  // submission writes nulls: the pairings have moved since anyone agreed them,
+  // so whatever was confirmed no longer describes what is on the screen.
+  const matchIds = (Array.isArray(body.matchIds) ? body.matchIds : []).filter(
+    (id) => typeof id === 'string' && UUID.test(id),
+  );
+  if (matchIds.length > 0) {
+    const confirm = body.confirm === true;
+    const confirmedBy = session?.playerName || body.confirmedBy || 'A player';
+    const { error } = await supabase
+      .from('matches')
+      .update({
+        pairings_confirmed_at: confirm ? new Date().toISOString() : null,
+        pairings_confirmed_by: confirm ? confirmedBy.slice(0, 60) : null,
+      })
+      .in('id', matchIds);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

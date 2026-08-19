@@ -76,6 +76,23 @@ export interface SaveGroupsInput {
   roundId: string;
   groups: Array<{ id?: string; name: string; playerIds: string[]; sortOrder: number }>;
   updatedBy: string;
+  /**
+   * True when the person is submitting these 4-balls for the round, not just
+   * saving a draft. One person confirming is enough.
+   *
+   * Editing after a confirmation clears it: the groups have changed, so they
+   * need looking at again before anyone relies on them.
+   */
+  confirm?: boolean;
+}
+
+/** Saving who is playing whom, optionally confirming it for the round. */
+export interface SaveMatchupsInput {
+  sides: Array<{ id: string; playerIds: string[] }>;
+  /** The matches these sides belong to — what a confirmation is stamped on. */
+  matchIds: string[];
+  confirm?: boolean;
+  confirmedBy?: string;
 }
 
 export interface TourStore {
@@ -99,7 +116,7 @@ export interface TourStore {
    * `playerIds`, so the screen that everyone can reach cannot change a format,
    * a hole range or a points value.
    */
-  saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void>;
+  saveMatchups(input: SaveMatchupsInput): Promise<void>;
   /** Admin edits. */
   update<K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]): Promise<void>;
   /** Insert a new row (itinerary items, fines, matches, sides). */

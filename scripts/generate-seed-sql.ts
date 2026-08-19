@@ -220,6 +220,11 @@ parts.push(
       sort_order: group.sortOrder,
       updated_by: group.updatedBy,
       updated_at: group.updatedAt,
+      // Seeded groups are the defaults, not something anyone has agreed, so
+      // re-running the seed must also clear any confirmation left over from
+      // the pairings it just overwrote.
+      confirmed_at: group.confirmedAt,
+      confirmed_by: group.confirmedBy,
     })),
   ),
 );
@@ -238,6 +243,10 @@ parts.push(
       allowance_override: match.allowanceOverride,
       status: match.status,
       sort_order: match.sortOrder,
+      // Same reasoning as the 4-balls above: the seed resets the sides, so it
+      // resets what anybody had submitted about them.
+      pairings_confirmed_at: match.pairingsConfirmedAt,
+      pairings_confirmed_by: match.pairingsConfirmedBy,
     })),
   ),
 );
@@ -278,7 +287,7 @@ parts.push(
 parts.push('commit;', '');
 parts.push(
   '-- Sanity check — should report 2 teams, 8 players, 4 courses, 72 holes,',
-  '-- 4 rounds and 15 matches (worth 11 points in total).',
+  '-- 4 rounds and 14 matches (worth 11 points in total).',
   "select 'teams' as entity, count(*) from teams",
   "union all select 'players', count(*) from players",
   "union all select 'courses', count(*) from courses",

@@ -89,11 +89,12 @@ export const FORMAT_SHORT_LABELS: Record<MatchFormat, string> = {
 export interface HandicapAllowance {
   /**
    * Percentage applied to each player's course handicap, ordered from the
-   * LOWEST course handicap to the highest. e.g. `[0.35, 0.15]` is the common
-   * 2-man scramble allowance (35% of the low handicap + 15% of the high).
+   * LOWEST course handicap to the highest. e.g. `[0.5, 0.5]` rounded down is
+   * this tour's pair allowance — floor((CH1 + CH2) / 2) for a scramble or a
+   * shamble.
    *
    * For per-player formats (singles, better ball) the first entry applies to
-   * every player individually.
+   * every player individually; this tour uses 100% for both.
    */
   weights: number[];
   /** Rounding applied to the resulting playing handicap. */
@@ -130,18 +131,22 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
   lockCompletedHoles: true,
   allowances: {
     // 4-man scramble: a widely used allowance is 20/15/10/5% low-to-high.
+    // Unused by this tour's rounds but kept so the format stays selectable.
     team_scramble: { weights: [0.2, 0.15, 0.1, 0.05], rounding: 'nearest' },
-    // WHS four-ball match play allowance is 90%.
-    better_ball: { weights: [0.9], rounding: 'nearest' },
-    // WHS singles match play allowance is 100%.
+    // Better ball: 100% of each player's own course handicap. The lowest
+    // player in the match then plays off scratch and the rest take the
+    // difference, which is `handicapMode: 'difference'` below.
+    better_ball: { weights: [1], rounding: 'nearest' },
+    // Singles: 100% each, lower player off scratch.
     singles: { weights: [1], rounding: 'nearest' },
-    // 2-man scramble: 35% of the low handicap + 15% of the high.
-    two_man_scramble: { weights: [0.35, 0.15], rounding: 'nearest' },
-    // Shamble: each player plays their own ball in, so the allowance is
-    // per-player like better ball. 90% is the WHS four-ball figure; the shared
-    // drive makes a lower number defensible, so this is editable in
-    // Tour settings -> Rules.
-    shamble: { weights: [0.9], rounding: 'nearest' },
+    // Two-man scramble and shamble share one team handicap:
+    //
+    //     floor((CH1 + CH2) / 2)
+    //
+    // which is what a 50/50 split with `floor` rounding computes. The lower
+    // team then plays off scratch and the other receives the difference.
+    two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
+    shamble: { weights: [0.5, 0.5], rounding: 'floor' },
     // WHS foursomes match play allowance is 50% of combined course handicaps.
     foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
   },
@@ -325,6 +330,13 @@ export interface RoundGroup {
   /** Who last changed it, so the round can show "updated by Alan". */
   updatedBy: string;
   updatedAt: string;
+  /**
+   * When someone confirmed these 4-balls for the round, and who. Null while
+   * they are still a draft. One person confirming is enough — this is a stamp,
+   * not an approval workflow.
+   */
+  confirmedAt: string | null;
+  confirmedBy: string | null;
 }
 
 export type MatchStatusValue = 'upcoming' | 'live' | 'complete';
@@ -347,6 +359,16 @@ export interface Match {
    * Day 3 scramble off 35/15% while a later scramble uses something else.
    */
   allowanceOverride: HandicapAllowance | null;
+  /**
+   * When someone confirmed who is playing whom in this match, and who did.
+   * Null while the pairing is still a draft.
+   *
+   * Held per match rather than per round so Day 3's three six-hole sections
+   * can be confirmed independently — a section is just the matches sharing a
+   * hole range.
+   */
+  pairingsConfirmedAt: string | null;
+  pairingsConfirmedBy: string | null;
   status: MatchStatusValue;
   sortOrder: number;
 }
