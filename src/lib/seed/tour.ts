@@ -30,6 +30,22 @@ import {
   type TourSnapshot,
 } from '@/lib/types';
 
+/**
+ * Bump whenever the seeded STRUCTURE changes — formats, matches, hole ranges,
+ * points, course text, handicap settings.
+ *
+ * Demo mode keeps the whole tour in localStorage, so without this a device
+ * that has opened the app once keeps its first copy of the seed forever: it
+ * went on showing Day 1 as a single 4-man scramble, and the old handicap
+ * allowances, long after both had changed. On a bump the structure is rebuilt
+ * from the seed and only genuinely live data — scores, results, fines,
+ * activity — is carried across.
+ *
+ *   1  original seed
+ *   2  Day 1 split into two 2-man scrambles; fixed handicap allowances
+ */
+export const SEED_VERSION = 2;
+
 export const TOUR_ID = stableId('tour:pars-and-pirates-2026');
 
 const TEAM_KEYS = { pars: 'team:pars', pirates: 'team:pirates' } as const;

@@ -7,6 +7,7 @@ import { useTour } from '@/lib/data/provider';
 import { useSession } from '@/lib/auth/session-provider';
 import { Avatar, EmptyState, PageHeader } from '@/components/ui';
 import { describeConfirmation, matchupsConfirmation } from '@/lib/rounds/confirmation';
+import { derivePairings } from '@/lib/rounds/derived-pairings';
 import {
   assignToSide,
   checkMatchups,
@@ -38,6 +39,7 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
     matchesForRound,
     sidesForMatch,
     holesForCourse,
+    groupsForRound,
     saveMatchups,
     playerById,
     teamById,
@@ -49,6 +51,17 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
   const course = round ? courseById(round.courseId) : undefined;
   const holeCount = course ? holesForCourse(course.id).length || 18 : 18;
   const sections = sectionsForRound(matches, holeCount);
+
+  // On a round where the 4-balls ARE the pairings (Day 3), there is nothing to
+  // edit here: one submission covers all three sections, made from the 4-ball
+  // screen. Editing sections separately is what let them drift apart.
+  const derived = derivePairings(
+    sections,
+    groupsForRound(roundId),
+    snapshot.players,
+    snapshot.teams,
+    sidesForMatch,
+  ).pairings;
 
   // Deep link from the round screen: ?section=7-12 opens that one expanded.
   const requested = searchParams.get('section');
@@ -81,11 +94,19 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
         }
       />
 
-      <p className="card px-3.5 py-3 text-sm leading-snug text-chalk-300">
-        Who is competing against whom. Tap a player, then tap another from the{' '}
-        <strong>same team</strong> to swap them. This does not change the 4-balls — who you walk
-        with stays as it is.
-      </p>
+      {derived ? (
+        <p className="card px-3.5 py-3 text-sm leading-snug text-chalk-300">
+          On this round the same pairs play all {holeCount} holes — only the format changes between
+          sections — so the matchups come straight from the 4-balls. Change the 4-balls and every
+          section follows, in one submission for the whole day.
+        </p>
+      ) : (
+        <p className="card px-3.5 py-3 text-sm leading-snug text-chalk-300">
+          Who is competing against whom. Tap a player, then tap another from the{' '}
+          <strong>same team</strong> to swap them. This does not change the 4-balls — who you walk
+          with stays as it is.
+        </p>
+      )}
 
       {sections.length === 0 && (
         <EmptyState
@@ -94,7 +115,19 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
         />
       )}
 
-      {sections.map((section) => (
+      {/* A derived round shows its sections read-only: the editing happens on
+          the 4-ball screen, so there is one decision and one submission. */}
+      {derived
+        ? sections.map((section) => (
+            <ReadOnlySection
+              key={section.key}
+              section={section}
+              sidesForMatch={sidesForMatch}
+              playerById={playerById}
+              teamById={teamById}
+            />
+          ))
+        : sections.map((section) => (
         <SectionEditor
           key={section.key}
           section={section}
@@ -109,10 +142,10 @@ export default function MatchupsPage({ params }: { params: Promise<{ roundId: st
           multiSection={sections.length > 1}
           me={session?.playerName || 'A player'}
         />
-      ))}
+          ))}
 
       <Link href={`/round/${round.id}/four-balls`} className="btn-ghost w-full">
-        Edit the 4-balls instead →
+        {derived ? 'Edit the pairings on the 4-ball screen →' : 'Edit the 4-balls instead →'}
       </Link>
     </div>
   );
@@ -389,6 +422,68 @@ function SectionEditor({
           {errorText && <p className="text-center text-xs text-pirate-300">{errorText}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One section of a derived round, shown but not editable.
+ *
+ * The pairings here come from the 4-balls, so an editor on this screen would
+ * be a second place to change the same thing — and the two would drift.
+ */
+function ReadOnlySection({
+  section,
+  sidesForMatch,
+  playerById,
+  teamById,
+}: {
+  section: Section;
+  sidesForMatch: ReturnType<typeof useTour>['sidesForMatch'];
+  playerById: ReturnType<typeof useTour>['playerById'];
+  teamById: ReturnType<typeof useTour>['teamById'];
+}) {
+  const confirmation = matchupsConfirmation(section.matches);
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center gap-3 px-3.5 py-3">
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">{section.label}</span>
+          <span className="block truncate text-xs text-chalk-500">{section.formatLabel}</span>
+        </span>
+        {confirmation.state === 'confirmed' && (
+          <span className="chip bg-fairway-500/20 text-fairway-300">SUBMITTED</span>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-white/6 px-3.5 py-3">
+        {section.matches.map((match) => (
+          <div key={match.id} className="rounded-xl bg-white/4 px-3 py-2.5">
+            <div className="label mb-1.5">{match.name}</div>
+            {sidesForMatch(match.id).map((side, index) => {
+              const team = teamById(side.teamId);
+              return (
+                <div key={side.id}>
+                  {index > 0 && (
+                    <div className="my-1 text-center text-[0.6rem] font-bold text-chalk-600">vs</div>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: team?.colour }}
+                    />
+                    <span className="truncate">
+                      {side.playerIds.map((id) => playerById(id)?.name ?? 'Unknown').join(' & ') ||
+                        'Not set'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

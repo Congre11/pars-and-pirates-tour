@@ -28,11 +28,12 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (167 tests) | `src/lib/**/*.test.ts` |
+| Test suite (195 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
 | Matchup sections + validation | `src/lib/rounds/matchups.ts` |
+| Pairings derived from the 4-balls | `src/lib/rounds/derived-pairings.ts` |
 | Pairing confirmation state | `src/lib/rounds/confirmation.ts` |
 | Seeded tour (players, days, courses, itinerary) | `src/lib/seed/` |
 | Generated SQL seed | `supabase/seed.sql` (`npm run seed:sql`) |
@@ -46,7 +47,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 167 tests: scoring, points, formats, 4-balls, matchups
+npm test           # 195 tests: scoring, points, formats, 4-balls, matchups
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -143,14 +144,23 @@ and tee before any allowance is applied.
 Default allowances (editable in **Tour settings → Rules** for every match of
 that format, or per match in **Tour settings → Formats & pairings**):
 
-| Format | Allowance |
-| --- | --- |
-| 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) — unused by this tour, kept selectable |
-| Better Ball | 100% each, lowest player in the match off zero |
-| Singles | 100% each, lower player off zero |
-| 2-Man Scramble | 50 / 50 rounded down — `floor((CH1 + CH2) / 2)` for the pair |
-| Shamble | 50 / 50 rounded down — one team handicap, both balls net against it |
-| Alternate Shot | 50% of combined |
+| Format | Allowance | |
+| --- | --- | --- |
+| 2-Man Scramble | `floor((CH1 + CH2) / 2)` for the pair | **fixed** |
+| Shamble | `floor((CH1 + CH2) / 2)` — one team handicap, both balls net against it | **fixed** |
+| Better Ball | 100% each, lowest player in the match off zero | **fixed** |
+| Singles | 100% each, lower player off zero | **fixed** |
+| 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) — unused by this tour | editable |
+| Alternate Shot | 50% of combined | editable |
+
+**The four marked "fixed" are set in code (`FIXED_ALLOWANCES` in `src/lib/types.ts`), not
+in settings.** They used to be editable and stored, which meant a settings record
+written before the rules were agreed silently kept overriding them: the scoreboard
+showed a scramble pair off `Team 9` instead of `Team 20` with nothing in the code
+wrong and nothing on screen to say why. `allowanceFor()` now returns the rule
+regardless of what is stored, and regardless of any per-match override — an override
+is persisted data too, and carries the same risk. Changing one of these four is a
+code change and a deploy, deliberately.
 
 Plus handicaps are supported and give strokes back from the easiest holes.
 
@@ -219,11 +229,32 @@ the group stays together for all 18 holes while the format changes three times
 underneath it, and each six-hole section can be paired differently. Nothing
 assumes they line up, and changing one never rewrites the other.
 
-**Matchups are edited per hole range.** `sectionsForRound` groups a round's
-matches by their start/end holes, so a normal day offers one section and Day 3
-offers three, each with its own **Edit matchups** control on the round screen
-and its own Save. Re-pairing holes 7–12 leaves 1–6 and 13–18 exactly as they
-were.
+**Matchups are edited per hole range — except when the 4-balls *are* the
+matchups.** `sectionsForRound` groups a round's matches by their start/end
+holes, so a normal day offers one section and Day 3 offers three.
+
+On a round with more than one section the same people stay in the same buggy
+for all 18 holes and only the format changes, so editing three separate sets of
+pairings is both tedious and a way to end up with holes 7–12 quietly
+disagreeing with holes 1–6. `src/lib/rounds/derived-pairings.ts` therefore
+derives the pairings from the 4-balls:
+
+```
+4-ball   =  the four people playing together
+            inside it, the 2 Pars are one side and the 2 Pirates the other
+section  =  a hole range with its own format
+```
+
+One 4-ball becomes one match in every section, with the same two sides. Move
+somebody and all three sections follow; the handicaps recompute from whoever is
+actually in the pairing. It is **one submission for the whole 18 holes**, made
+on the 4-ball screen, and the matchups screen shows those sections read-only.
+
+The derivation is deliberately conservative and returns a *reason* rather than
+guessing: a single-section round, an unequal team split, or sections that hold
+different numbers of matches all fall back to the ordinary per-section editor.
+That keeps Day 4 correct, where one 4-ball holds two singles matches and a
+2-Pars-versus-2-Pirates split would be wrong.
 
 Rules enforced on the 4-ball editor (`src/lib/rounds/four-balls.ts`):
 

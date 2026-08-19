@@ -3,6 +3,7 @@ import { computeMatch, computeStandings, shortStatus } from './engine';
 import { courseHandicap, sidePlayingHandicap, strokesForHoles, strokesOnHole } from './handicap';
 import {
   DEFAULT_TOUR_SETTINGS,
+  FIXED_ALLOWANCES,
   type Hole,
   type Match,
   type MatchSide,
@@ -541,9 +542,12 @@ describe('per-match handicap allowance', () => {
     player('b2', 'team-b', 8),
   ];
 
+  // Foursomes, because the override only applies to formats WITHOUT a fixed
+  // tournament rule. Scramble, shamble, better ball and singles ignore it —
+  // see 'the four fixed allowances ignore stored settings' below.
   function run(allowanceOverride: Match['allowanceOverride']) {
     return computeMatch({
-      match: match({ format: 'two_man_scramble', allowanceOverride }),
+      match: match({ format: 'foursomes', allowanceOverride }),
       sides: sides(['a1', 'a2'], ['b1', 'b2']),
       players,
       holes: HOLES,
@@ -556,8 +560,8 @@ describe('per-match handicap allowance', () => {
   // On this tee the indexes above convert to course handicaps 4, 22, 6 and 8.
   it('uses the tour default for the format when no override is set', () => {
     const outcome = run(null);
-    // A scramble pair play off floor((CH1 + CH2) / 2):
-    //   floor((4 + 22) / 2) = 13;  floor((6 + 8) / 2) = 7.
+    // WHS foursomes is 50% of the combined total:
+    //   (4 + 22) / 2 = 13;  (6 + 8) / 2 = 7.
     // Difference mode: the lower side plays off scratch.
     expect(outcome.handicaps['side-a'].rawPlayingHandicap).toBe(13);
     expect(outcome.handicaps['side-b'].rawPlayingHandicap).toBe(7);
@@ -566,7 +570,7 @@ describe('per-match handicap allowance', () => {
   });
 
   it("applies the match's own allowance instead when one is set", () => {
-    // Full combined handicaps rather than the floored average.
+    // Full combined handicaps rather than half.
     const outcome = run({ weights: [1, 1], rounding: 'nearest' });
     expect(outcome.handicaps['side-a'].rawPlayingHandicap).toBe(26);
     expect(outcome.handicaps['side-b'].rawPlayingHandicap).toBe(14);
@@ -590,10 +594,9 @@ describe('per-match handicap allowance', () => {
   });
 
   it("honours the override's rounding rule", () => {
-    // 50% of 4 + 50% of 20 = 12 exactly; use a weight that lands on a fraction.
     const down = run({ weights: [0.5, 0.4], rounding: 'floor' });
     const up = run({ weights: [0.5, 0.4], rounding: 'ceil' });
-    // 0.5*4 + 0.4*20 = 10 for side A; 0.5*6 + 0.4*8 = 6.2 for side B.
+    // 0.5*6 + 0.4*8 = 6.2 for side B.
     expect(down.handicaps['side-b'].rawPlayingHandicap).toBe(6);
     expect(up.handicaps['side-b'].rawPlayingHandicap).toBe(7);
   });
@@ -910,5 +913,108 @@ describe('a six-hole match allocates over its own holes', () => {
     expect(Object.values(strokes).reduce((a, b) => a + b, 0)).toBe(9);
     // Six holes, nine shots: everyone gets one and the three hardest get two.
     expect(strokes).toEqual({ 13: 2, 14: 2, 15: 2, 16: 1, 17: 1, 18: 1 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixed allowances: a stored setting must not be able to change these
+// ---------------------------------------------------------------------------
+
+describe('the four fixed allowances ignore stored settings', () => {
+  const players = [
+    player('a1', 'team-a', 12.0), // CH 13
+    player('a2', 'team-a', 20.0), // CH 22
+    player('b1', 'team-b', 6.0), // CH 6
+    player('b2', 'team-b', 6.0), // CH 6
+  ];
+
+  /** A settings record carrying the SUPERSEDED allowances. */
+  const STALE: TourSettings = {
+    ...DEFAULT_TOUR_SETTINGS,
+    allowances: {
+      ...DEFAULT_TOUR_SETTINGS.allowances,
+      two_man_scramble: { weights: [0.35, 0.15], rounding: 'nearest' },
+      shamble: { weights: [0.9], rounding: 'nearest' },
+      better_ball: { weights: [0.9], rounding: 'nearest' },
+      singles: { weights: [0.9], rounding: 'nearest' },
+    },
+  };
+
+  const run = (format: Match['format'], settings: TourSettings, allowanceOverride = null) =>
+    computeMatch({
+      match: match({ format, allowanceOverride }),
+      sides: sides(['a1', 'a2'], ['b1', 'b2']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings,
+    });
+
+  it('scrambles off floor((CH1 + CH2) / 2) even when the record says 35/15', () => {
+    // 35% of 13 + 15% of 22 would be 8; the rule gives floor(35/2) = 17.
+    expect(run('two_man_scramble', STALE).teamHandicaps['side-a']).toBe(17);
+    expect(run('two_man_scramble', STALE).teamHandicaps['side-b']).toBe(6);
+  });
+
+  it('shambles off the same rule even when the record says 90%', () => {
+    // 90% of the combined 35 would be 32.
+    expect(run('shamble', STALE).teamHandicaps['side-a']).toBe(17);
+  });
+
+  it('plays better ball off 100% even when the record says 90%', () => {
+    const outcome = run('better_ball', STALE);
+    // At 90% a1 would be 12 and a2 20, off a lowest of 5 -> 7 and 15.
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(7);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a2).toBe(16);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(0);
+  });
+
+  it('plays singles off 100% even when the record says 90%', () => {
+    const outcome = computeMatch({
+      match: match({ format: 'singles' }),
+      sides: sides(['a1'], ['b1']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings: STALE,
+    });
+    // 13 against 6 at 100%; at 90% it would be 12 against 5, so still 7 —
+    // check the raw course handicaps too so the numbers cannot coincide.
+    expect(outcome.handicaps['side-a'].courseHandicaps.a1).toBe(13);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(7);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(0);
+  });
+
+  it('ignores a per-match override on a fixed format too', () => {
+    // An override is persisted data and carries the same risk as a setting.
+    const overridden = run('two_man_scramble', DEFAULT_TOUR_SETTINGS, {
+      weights: [1, 1],
+      rounding: 'nearest',
+    } as never);
+    expect(overridden.teamHandicaps['side-a']).toBe(17);
+  });
+
+  it('still honours the setting for a format with no fixed rule', () => {
+    // team_scramble is unused by this tour, so it stays editable.
+    const tweaked: TourSettings = {
+      ...DEFAULT_TOUR_SETTINGS,
+      allowances: {
+        ...DEFAULT_TOUR_SETTINGS.allowances,
+        foursomes: { weights: [1, 1], rounding: 'nearest' },
+      },
+    };
+    expect(run('foursomes', tweaked).teamHandicaps['side-a']).toBe(35);
+    expect(run('foursomes', DEFAULT_TOUR_SETTINGS).teamHandicaps['side-a']).toBe(18);
+  });
+
+  it('keeps the seeded defaults in step with the fixed rules', () => {
+    // The defaults are still written to the database for the tour row. If they
+    // drifted from FIXED_ALLOWANCES the Rules screen would show one number
+    // while the engine applied another.
+    for (const [format, fixed] of Object.entries(FIXED_ALLOWANCES)) {
+      expect(DEFAULT_TOUR_SETTINGS.allowances[format as Match['format']]).toEqual(fixed);
+    }
   });
 });

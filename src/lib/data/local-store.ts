@@ -10,7 +10,7 @@
  * It is NOT multi-device: two phones in demo mode each keep their own scores.
  */
 
-import { buildSeedSnapshot } from '@/lib/seed/tour';
+import { SEED_VERSION, buildSeedSnapshot } from '@/lib/seed/tour';
 import {
   cloneSnapshot,
   removeById,
@@ -26,6 +26,9 @@ import {
 import type { RoundGroup, Score, TourSnapshot } from '@/lib/types';
 
 const STORAGE_KEY = 'pars-pirates:tour:v1';
+
+/** What is written to storage: the tour, plus the seed version that built it. */
+type StoredSnapshot = TourSnapshot & { seedVersion?: number };
 const CHANNEL_NAME = 'pars-pirates:sync';
 
 /** Snapshot array keys, so `update`/`insert` can address them generically. */
@@ -64,16 +67,22 @@ export class LocalTourStore implements TourStore {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as TourSnapshot;
+        const parsed = JSON.parse(raw) as StoredSnapshot;
         // Guard against a half-written or outdated payload.
         if (parsed?.tour?.id && Array.isArray(parsed.matches)) {
-          // Always refresh the seeded structure but keep the live scores, so a
-          // seed fix (e.g. a corrected stroke index) reaches existing devices.
-          const seed = buildSeedSnapshot();
-          return {
-            ...parsed,
-            tour: { ...seed.tour, ...parsed.tour, settings: parsed.tour.settings ?? seed.tour.settings },
-          };
+          if ((parsed.seedVersion ?? 1) === SEED_VERSION) return parsed;
+
+          // The seeded structure has changed since this device last wrote.
+          //
+          // The old code kept the stored copy and refreshed only the tour
+          // row's scalar fields — explicitly preferring the STORED settings —
+          // so a seed fix never reached a returning device. It went on showing
+          // the superseded Day 1 and the superseded handicap allowances with
+          // nothing in the code wrong. Rebuild from the seed instead, and
+          // carry over only what a person actually entered.
+          const migrated = this.migrate(parsed);
+          this.write(migrated);
+          return migrated;
         }
       }
     } catch {
@@ -84,10 +93,31 @@ export class LocalTourStore implements TourStore {
     return seeded;
   }
 
+  /**
+   * Rebuild on a seed change, keeping the entered data.
+   *
+   * Structure (formats, matches, sides, courses, holes, settings) comes from
+   * the new seed. Scores and results are kept, but only for matches that still
+   * exist — a match the seed removed would otherwise leave orphans behind.
+   * Fines and activity are free-text and survive as they are.
+   */
+  private migrate(parsed: StoredSnapshot): TourSnapshot {
+    const seed = buildSeedSnapshot();
+    const liveMatchIds = new Set(seed.matches.map((m) => m.id));
+    return {
+      ...seed,
+      scores: (parsed.scores ?? []).filter((s) => liveMatchIds.has(s.matchId)),
+      results: (parsed.results ?? []).filter((r) => liveMatchIds.has(r.matchId)),
+      fines: parsed.fines ?? seed.fines,
+      activity: parsed.activity ?? seed.activity,
+    };
+  }
+
   private write(snapshot: TourSnapshot): void {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      const stored: StoredSnapshot = { ...snapshot, seedVersion: SEED_VERSION };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     } catch {
       // Storage full or blocked (private browsing). The in-memory copy still
       // works for this session, so scoring keeps going.
@@ -183,6 +213,26 @@ export class LocalTourStore implements TourStore {
 
     // Replace this round's set, exactly as the server route does.
     next.groups = [...next.groups.filter((g) => g.roundId !== input.roundId), ...saved];
+
+    // A round whose 4-balls ARE its pairings writes both together, so holes
+    // 1-6, 7-12 and 13-18 can never disagree about who is playing whom.
+    if (input.pairings) {
+      const byId = new Map(input.pairings.sides.map((s) => [s.id, s.playerIds]));
+      next.sides = next.sides.map((side) =>
+        byId.has(side.id) ? { ...side, playerIds: [...byId.get(side.id)!] } : side,
+      );
+      const touched = new Set(input.pairings.matchIds);
+      next.matches = next.matches.map((m) =>
+        touched.has(m.id)
+          ? {
+              ...m,
+              pairingsConfirmedAt: input.confirm ? updatedAt : null,
+              pairingsConfirmedBy: input.confirm ? input.updatedBy : null,
+            }
+          : m,
+      );
+    }
+
     this.commit(next);
   }
 

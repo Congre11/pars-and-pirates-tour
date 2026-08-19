@@ -5,6 +5,7 @@
  * database, a browser or a golf course.
  */
 
+import { allowanceFor } from '@/lib/types';
 import type { HandicapAllowance, Hole, MatchFormat, Player, Tee, TourSettings } from '@/lib/types';
 
 function applyRounding(value: number, rounding: HandicapAllowance['rounding']): number {
@@ -170,7 +171,9 @@ export function computeMatchHandicaps(
   /** This match's own allowance, if an admin set one. Null uses the default. */
   allowanceOverride: HandicapAllowance | null = null,
 ): SideHandicapResult[] {
-  const allowance = allowanceOverride ?? settings.allowances[format];
+  // A fixed tournament rule wins over both the stored setting and any
+  // per-match override — see FIXED_ALLOWANCES.
+  const allowance = allowanceFor(format, settings, allowanceOverride);
 
   const raw: SideHandicapResult[] = sides.map((side) => {
     const courseHandicaps: Record<string, number> = {};
