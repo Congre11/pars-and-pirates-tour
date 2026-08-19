@@ -9,12 +9,13 @@ import { FORMAT_LABELS, type MatchFormat, type TourSettings } from '@/lib/types'
 const ALLOWANCE_HELP: Record<MatchFormat, string> = {
   team_scramble:
     'Applied to the four course handicaps sorted lowest to highest. The common setting is 20 / 15 / 10 / 5%.',
-  better_ball: 'Applied to each player individually. WHS four-ball match play is 90%.',
+  better_ball:
+    'Applied to each player individually. This tour plays off 100% — the lowest player in the match plays off zero and the other three receive the difference.',
   singles: 'Applied to each player individually. WHS singles match play is 100%.',
   two_man_scramble:
-    'Applied to the two course handicaps, lowest first. The common setting is 35 / 15%.',
+    'Applied to the two course handicaps, lowest first. This tour plays 50 / 50 rounded down, i.e. floor((CH1 + CH2) / 2) for the pair.',
   shamble:
-    'Applied to each player individually, as in better ball, because each plays their own ball in from the chosen drive. 90% to start; lower it if the shared drive makes it too easy.',
+    'Applied to the two course handicaps like a scramble — the pair play off one combined handicap even though each finishes their own ball. This tour plays 50 / 50 rounded down.',
   foursomes: 'Applied to both course handicaps. WHS foursomes is 50% of the combined total.',
 };
 

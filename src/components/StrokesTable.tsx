@@ -1,9 +1,9 @@
 'use client';
 
 import { useTour } from '@/lib/data/provider';
-import { courseHandicap, strokesOnHole } from '@/lib/scoring/handicap';
+import { courseHandicap, isPerPlayerFormat, strokesOnHole } from '@/lib/scoring/handicap';
 import { courseHandicapLabel, handicapLabel } from '@/lib/format';
-import type { Round } from '@/lib/types';
+import { FORMAT_LABELS, type Round } from '@/lib/types';
 
 /**
  * "Who gets shots, and where."
@@ -134,6 +134,100 @@ export function StrokesTable({ round }: { round: Round }) {
           </tfoot>
         </table>
       </div>
+    </div>
+  );
+}
+
+/**
+ * What each side actually plays off in each match.
+ *
+ * The table above is course handicaps — the raw number off the tee. This is the
+ * next step, and the one people argue about on the first tee: after the format
+ * allowance and the match-play difference, who is giving shots to whom.
+ *
+ * Two shapes, because the formats genuinely differ:
+ *
+ *   scramble / shamble — the pair play off ONE combined handicap,
+ *                        floor((CH1 + CH2) / 2), and the lower pair play off
+ *                        zero while the higher receive the difference.
+ *   better ball / singles — every player carries their own 100% course
+ *                        handicap, and the lowest player IN THAT MATCH plays
+ *                        off zero while the rest receive the difference.
+ *
+ * Every number here comes from the engine's own outcome, not a re-computation,
+ * so it cannot drift from what the scorecard awards.
+ */
+export function MatchHandicaps({ round }: { round: Round }) {
+  const { matchesForRound, sidesForMatch, outcomeFor, playerById, teamById } = useTour();
+
+  const matches = matchesForRound(round.id);
+  if (matches.length === 0) return null;
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="border-b border-white/8 px-3.5 py-2.5">
+        <div className="label">Playing handicaps</div>
+        <p className="mt-0.5 text-xs text-chalk-500">
+          After the format allowance and the match-play difference. The lower side plays off zero.
+        </p>
+      </div>
+
+      <ul className="divide-y divide-white/6">
+        {matches.map((match) => {
+          const outcome = outcomeFor(match.id);
+          const sides = sidesForMatch(match.id);
+          const perPlayer = isPerPlayerFormat(match.format);
+
+          return (
+            <li key={match.id} className="px-3.5 py-2.5">
+              <div className="label mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate">{match.name}</span>
+                <span className="shrink-0 font-normal text-chalk-500">
+                  {FORMAT_LABELS[match.format]}
+                </span>
+              </div>
+
+              {sides.map((side) => {
+                const team = teamById(side.teamId);
+                const handicaps = outcome?.handicaps[side.id];
+                const teamHandicap = outcome?.teamHandicaps[side.id] ?? null;
+                const plays = handicaps?.playingHandicap ?? 0;
+                return (
+                  <div
+                    key={side.id}
+                    className="flex items-baseline justify-between gap-2 py-1 text-xs"
+                  >
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: team?.colour }}
+                      />
+                      <span className="truncate">
+                        {side.playerIds
+                          .map((id) => {
+                            const name = playerById(id)?.name.split(' ')[0] ?? '?';
+                            const ch = handicaps?.courseHandicaps[id];
+                            return ch === undefined ? name : `${name} ${courseHandicapLabel(ch)}`;
+                          })
+                          .join(' & ') || 'Not set'}
+                      </span>
+                    </span>
+                    <span className="shrink-0 tabular font-bold text-brass-400">
+                      {perPlayer
+                        ? side.playerIds
+                            .map((id) =>
+                              courseHandicapLabel(handicaps?.playerPlayingHandicaps[id] ?? 0),
+                            )
+                            .join(' / ')
+                        : `Team ${courseHandicapLabel(teamHandicap ?? 0)} → plays ${courseHandicapLabel(plays)}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -10,6 +10,8 @@ interface GroupsBody {
   roundId?: string;
   groups?: Array<{ id?: string; name?: string; playerIds?: string[]; sortOrder?: number }>;
   updatedBy?: string;
+  /** True when this save is a submission, not a draft. */
+  confirm?: boolean;
 }
 
 /** Rough UUID check, so a malformed id cannot reach Postgres as a uuid[]. */
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
   // player cannot record a change against somebody else's name.
   const updatedBy = session?.playerName || body.updatedBy || 'A player';
   const updatedAt = new Date().toISOString();
+  const confirmed = body.confirm === true;
 
   const rows = groups.map((group, index) => {
     const playerIds = Array.isArray(group.playerIds)
@@ -70,6 +73,11 @@ export async function POST(request: Request) {
       sortOrder: typeof group.sortOrder === 'number' ? group.sortOrder : index,
       updatedBy,
       updatedAt,
+      // One person submitting is enough — this is a confirmation, not an
+      // approval chain. A plain save writes nulls, which is what clears a
+      // previous confirmation: the groups have moved since anyone agreed them.
+      confirmedAt: confirmed ? updatedAt : null,
+      confirmedBy: confirmed ? updatedBy : null,
     });
   });
 

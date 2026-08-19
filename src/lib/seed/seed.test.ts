@@ -24,11 +24,29 @@ describe('tournament points structure', () => {
   const pointsFor = (dayNo: number) =>
     byDay(dayNo).reduce((sum, m) => sum + m.pointsValue, 0);
 
-  it('Day 1 is one 4-man scramble worth 2 points', () => {
+  it('Day 1 is two 2-man scrambles worth 1 point each', () => {
     const matches = byDay(1);
-    expect(matches).toHaveLength(1);
-    expect(matches[0].format).toBe('team_scramble');
-    expect(matches[0].pointsValue).toBe(2);
+    expect(matches).toHaveLength(2);
+    expect(matches.every((m) => m.format === 'two_man_scramble')).toBe(true);
+    expect(matches.every((m) => m.pointsValue === 1)).toBe(true);
+    expect(matches.every((m) => m.startHole === 1 && m.endHole === 18)).toBe(true);
+    // Two physical 4-balls, each of which is one match — so Day 1 is still 2.
+    expect(pointsFor(1)).toBe(2);
+  });
+
+  it('has no 4-man scramble left anywhere', () => {
+    // The format Day 1 used to use. If it reappears the round has silently
+    // reverted to the old single-match specification.
+    expect(snapshot.matches.some((m) => m.format === 'team_scramble')).toBe(false);
+  });
+
+  it('each Day 1 scramble is 2 Pars against 2 Pirates', () => {
+    for (const match of byDay(1)) {
+      const sides = snapshot.sides.filter((s) => s.matchId === match.id);
+      expect(sides).toHaveLength(2);
+      expect(sides.every((s) => s.playerIds.length === 2)).toBe(true);
+      expect(new Set(sides.map((s) => s.teamId)).size).toBe(2);
+    }
   });
 
   it('Day 2 is two better-ball matches worth 1 point each', () => {

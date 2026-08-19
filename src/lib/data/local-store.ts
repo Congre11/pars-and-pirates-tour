@@ -18,6 +18,7 @@ import {
   type AdminEntity,
   type AdminPatches,
   type SaveGroupsInput,
+  type SaveMatchupsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -176,6 +177,8 @@ export class LocalTourStore implements TourStore {
       sortOrder: group.sortOrder ?? index,
       updatedBy: input.updatedBy,
       updatedAt,
+      confirmedAt: input.confirm ? updatedAt : null,
+      confirmedBy: input.confirm ? input.updatedBy : null,
     }));
 
     // Replace this round's set, exactly as the server route does.
@@ -183,11 +186,25 @@ export class LocalTourStore implements TourStore {
     this.commit(next);
   }
 
-  async saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void> {
+  async saveMatchups(input: SaveMatchupsInput): Promise<void> {
     const next = cloneSnapshot(this.snapshot);
-    const byId = new Map(sides.map((s) => [s.id, s.playerIds]));
+    const byId = new Map(input.sides.map((s) => [s.id, s.playerIds]));
     next.sides = next.sides.map((side) =>
       byId.has(side.id) ? { ...side, playerIds: [...byId.get(side.id)!] } : side,
+    );
+
+    // Confirming stamps the matches; a plain edit clears any previous stamp,
+    // because the pairings have moved since anyone last agreed them.
+    const touched = new Set(input.matchIds);
+    const stamp = input.confirm ? new Date().toISOString() : null;
+    next.matches = next.matches.map((m) =>
+      touched.has(m.id)
+        ? {
+            ...m,
+            pairingsConfirmedAt: stamp,
+            pairingsConfirmedBy: stamp ? (input.confirmedBy ?? 'A player') : null,
+          }
+        : m,
     );
     this.commit(next);
   }

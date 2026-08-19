@@ -88,7 +88,7 @@ const FALDO: SeedCourse = {
   name: 'Faldo — Queen’s + Prince’s',
   location: 'Cornelia Golf Club, Belek, Turkey',
   sourceUrl: null,
-  notes: 'Day 1 — 4-man Team Scramble. Tee times 11:00.',
+  notes: 'Day 1 — two 2-man Scramble matches. Tee times 11:00.',
   routing: 'Queen’s loop (holes 1–9), then Prince’s loop (holes 10–18)',
   nineNames: ['Queen’s', 'Prince’s'],
   dataVerified: false,

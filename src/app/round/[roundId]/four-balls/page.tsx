@@ -14,6 +14,7 @@ import {
   type DraftGroup,
 } from '@/lib/rounds/four-balls';
 import { describeRoundFormat } from '@/lib/rounds/format-plan';
+import { describeConfirmation, groupsConfirmation } from '@/lib/rounds/confirmation';
 
 /**
  * Edit the day's 4-balls.
@@ -57,7 +58,9 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
 
   const [draft, setDraft] = useState<DraftGroup[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'submitting' | 'saved' | 'error'>(
+    'idle',
+  );
   const [confirming, setConfirming] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -109,8 +112,8 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
     setSelected(null);
   };
 
-  const save = async () => {
-    setSaveState('saving');
+  const save = async (confirm = false) => {
+    setSaveState(confirm ? 'submitting' : 'saving');
     setErrorText(null);
     try {
       await saveGroups({
@@ -122,6 +125,7 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
           sortOrder: index,
         })),
         updatedBy: session?.playerName || 'A player',
+        confirm,
       });
       setSaveState('saved');
       setConfirming(false);
@@ -134,6 +138,12 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
   };
 
   const lastEdited = [...saved].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+
+  // One person submitting is enough — this confirms the 4-balls for the day,
+  // it is not an approval chain. Any later plain save clears the stamp, so an
+  // edit after a submission shows as a draft again.
+  const confirmation = groupsConfirmation(saved);
+  const busy = saveState === 'saving' || saveState === 'submitting';
 
   return (
     <div className="space-y-4 pb-6">
@@ -286,25 +296,42 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
               <button onClick={() => setConfirming(false)} className="btn-ghost">
                 Go back
               </button>
-              <button onClick={save} className="btn-primary">
+              <button onClick={() => save(false)} className="btn-primary">
                 Save anyway
               </button>
             </div>
           </>
         ) : (
-          <button
-            onClick={() => (check.ok ? save() : setConfirming(true))}
-            disabled={!dirty || saveState === 'saving'}
-            className="btn-primary w-full disabled:opacity-40"
-          >
-            {saveState === 'saving'
-              ? 'Saving…'
-              : saveState === 'saved'
-                ? 'Saved ✓'
-                : dirty
-                  ? 'Save the 4-balls'
-                  : 'No changes to save'}
-          </button>
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => (check.ok ? save(false) : setConfirming(true))}
+                disabled={!dirty || busy}
+                className="btn-ghost disabled:opacity-40"
+              >
+                {saveState === 'saving' ? 'Saving…' : dirty ? 'Save' : 'No changes'}
+              </button>
+              <button
+                onClick={() => save(true)}
+                disabled={!check.ok || busy || (confirmation.state === 'confirmed' && !dirty)}
+                className="btn-primary disabled:opacity-40"
+              >
+                {saveState === 'submitting'
+                  ? 'Submitting…'
+                  : saveState === 'saved'
+                    ? 'Saved ✓'
+                    : confirmation.state === 'confirmed' && !dirty
+                      ? 'Submitted ✓'
+                      : 'Submit the 4-balls'}
+              </button>
+            </div>
+            <p className="text-center text-xs leading-snug text-chalk-500">
+              {dirty && confirmation.state === 'confirmed'
+                ? 'Edited since it was submitted — submit again to confirm.'
+                : describeConfirmation(confirmation, 'these 4-balls')}
+              {confirmation.state !== 'confirmed' && ' · one person submitting is enough.'}
+            </p>
+          </>
         )}
 
         {dirty && (

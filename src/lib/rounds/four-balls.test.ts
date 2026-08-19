@@ -199,6 +199,8 @@ describe('groupsForEditing', () => {
       playerIds: ['andrew', 'ryan', 'nick', 'dan'],
       sortOrder: 1,
       updatedBy: 'Alan',
+      confirmedAt: null,
+      confirmedBy: null,
       updatedAt: '2026-08-29T06:00:00.000Z',
     },
     {
@@ -208,6 +210,8 @@ describe('groupsForEditing', () => {
       playerIds: ['jason', 'alan', 'jordy', 'connor'],
       sortOrder: 0,
       updatedBy: 'Alan',
+      confirmedAt: null,
+      confirmedBy: null,
       updatedAt: '2026-08-29T06:00:00.000Z',
     },
   ];
@@ -233,6 +237,8 @@ describe('isDirty', () => {
     playerIds: g.playerIds,
     sortOrder: g.sortOrder,
     updatedBy: 'seed',
+    confirmedAt: null,
+    confirmedBy: null,
     updatedAt: '2026-08-29T06:00:00.000Z',
   }));
 

@@ -265,6 +265,8 @@ export const fromMatchRow = (r: Row): Match => ({
   endHole: num(r.end_hole, 18),
   pointsValue: num(r.points_value, 1),
   allowanceOverride: toAllowanceOverride(r.allowance_override),
+  pairingsConfirmedAt: nstr(r.pairings_confirmed_at),
+  pairingsConfirmedBy: nstr(r.pairings_confirmed_by),
   status: (str(r.status, 'upcoming') as Match['status']) ?? 'upcoming',
   sortOrder: num(r.sort_order),
 });
@@ -278,6 +280,8 @@ export const toMatchRow = (m: Partial<Match>): Row => ({
   ...(m.endHole !== undefined && { end_hole: m.endHole }),
   ...(m.pointsValue !== undefined && { points_value: m.pointsValue }),
   ...(m.allowanceOverride !== undefined && { allowance_override: m.allowanceOverride }),
+  ...(m.pairingsConfirmedAt !== undefined && { pairings_confirmed_at: m.pairingsConfirmedAt }),
+  ...(m.pairingsConfirmedBy !== undefined && { pairings_confirmed_by: m.pairingsConfirmedBy }),
   ...(m.status !== undefined && { status: m.status }),
   ...(m.sortOrder !== undefined && { sort_order: m.sortOrder }),
 });
@@ -405,6 +409,8 @@ export const fromGroupRow = (r: Row): RoundGroup => ({
   sortOrder: num(r.sort_order),
   updatedBy: str(r.updated_by, 'unknown'),
   updatedAt: str(r.updated_at),
+  confirmedAt: nstr(r.confirmed_at),
+  confirmedBy: nstr(r.confirmed_by),
 });
 
 export const toGroupRow = (g: Partial<RoundGroup>): Row => ({
@@ -415,6 +421,8 @@ export const toGroupRow = (g: Partial<RoundGroup>): Row => ({
   ...(g.sortOrder !== undefined && { sort_order: g.sortOrder }),
   ...(g.updatedBy !== undefined && { updated_by: g.updatedBy }),
   ...(g.updatedAt !== undefined && { updated_at: g.updatedAt }),
+  ...(g.confirmedAt !== undefined && { confirmed_at: g.confirmedAt }),
+  ...(g.confirmedBy !== undefined && { confirmed_by: g.confirmedBy }),
 });
 
 /** Table name -> row mapper, used by the realtime subscription. */

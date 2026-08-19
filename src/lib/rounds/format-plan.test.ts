@@ -24,6 +24,8 @@ function match(overrides: Partial<Match> = {}): Match {
     endHole: 18,
     pointsValue: 1,
     allowanceOverride: null,
+    pairingsConfirmedAt: null,
+    pairingsConfirmedBy: null,
     status: 'upcoming',
     sortOrder: counter,
     ...overrides,
@@ -166,7 +168,7 @@ describe('planRound', () => {
     const plan = planRound([standard, custom], lookup(map), { settings });
 
     expect(plan.segments[0].hasOwnAllowance).toBe(false);
-    expect(plan.segments[0].allowance.weights).toEqual([0.35, 0.15]);
+    expect(plan.segments[0].allowance.weights).toEqual([0.5, 0.5]);
     expect(plan.segments[1].hasOwnAllowance).toBe(true);
     expect(plan.segments[1].allowance).toEqual({ weights: [0.5, 0.25], rounding: 'floor' });
   });

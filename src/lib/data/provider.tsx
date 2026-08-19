@@ -38,6 +38,7 @@ import {
   type AdminEntity,
   type AdminPatches,
   type SaveGroupsInput,
+  type SaveMatchupsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -75,7 +76,7 @@ export interface TourContextValue {
   /** Save a round's 4-balls. Open to everyone. */
   saveGroups: (input: SaveGroupsInput) => Promise<void>;
   /** Save who is playing whom. Open to everyone; only touches side line-ups. */
-  saveMatchups: (sides: Array<{ id: string; playerIds: string[] }>) => Promise<void>;
+  saveMatchups: (input: SaveMatchupsInput) => Promise<void>;
   matchesForRound: (roundId: string) => Match[];
   sidesForMatch: (matchId: string) => MatchSide[];
   teesForCourse: (courseId: string) => Tee[];
@@ -126,10 +127,10 @@ function emptySnapshot(): TourSnapshot {
         lockCompletedHoles: true,
         allowances: {
           team_scramble: { weights: [0.2, 0.15, 0.1, 0.05], rounding: 'nearest' },
-          better_ball: { weights: [0.9], rounding: 'nearest' },
+          better_ball: { weights: [1], rounding: 'nearest' },
           singles: { weights: [1], rounding: 'nearest' },
-          two_man_scramble: { weights: [0.35, 0.15], rounding: 'nearest' },
-          shamble: { weights: [0.9], rounding: 'nearest' },
+          two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
+          shamble: { weights: [0.5, 0.5], rounding: 'floor' },
           foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
         },
       },
@@ -315,8 +316,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
   );
 
   const saveMatchups = useCallback(
-    (sides: Array<{ id: string; playerIds: string[] }>) =>
-      store.saveMatchups(sides).catch((err: Error) => {
+    (input: SaveMatchupsInput) =>
+      store.saveMatchups(input).catch((err: Error) => {
         setLastError(err.message);
         throw err;
       }),

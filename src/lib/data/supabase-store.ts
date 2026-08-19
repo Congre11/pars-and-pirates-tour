@@ -38,6 +38,7 @@ import {
   type AdminEntity,
   type AdminPatches,
   type SaveGroupsInput,
+  type SaveMatchupsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -322,11 +323,11 @@ export class SupabaseTourStore implements TourStore {
     }
   }
 
-  async saveMatchups(sides: Array<{ id: string; playerIds: string[] }>): Promise<void> {
+  async saveMatchups(input: SaveMatchupsInput): Promise<void> {
     const response = await fetch('/api/matchups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sides }),
+      body: JSON.stringify(input),
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: response.statusText }));

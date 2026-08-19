@@ -28,11 +28,12 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (139 tests) | `src/lib/**/*.test.ts` |
+| Test suite (167 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
 | Matchup sections + validation | `src/lib/rounds/matchups.ts` |
+| Pairing confirmation state | `src/lib/rounds/confirmation.ts` |
 | Seeded tour (players, days, courses, itinerary) | `src/lib/seed/` |
 | Generated SQL seed | `supabase/seed.sql` (`npm run seed:sql`) |
 | Storage layer + realtime + offline queue | `src/lib/data/` |
@@ -45,7 +46,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 139 tests: scoring, points, formats, 4-balls, matchups
+npm test           # 167 tests: scoring, points, formats, 4-balls, matchups
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -87,7 +88,7 @@ tour; nothing here is needed to play.
 
 | Day | Date | Course | Holes | Format | Matches | Per match | Day total |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 29 Aug | Faldo — Queen’s + Prince’s | 1–18 | 4-Man Team Scramble | 1 | 2 | **2** |
+| 1 | 29 Aug | Faldo — Queen’s + Prince’s | 1–18 | 2-Man Scramble | 2 | 1 | **2** |
 | 2 | 30 Aug | Carya Golf Club | 1–18 | Better Ball Match Play | 2 | 1 | **2** |
 | 3 | 1 Sep | PGA Sultan | 1–6 | 2-Man Scramble | 2 | 0.5 | 1 |
 | 3 | 1 Sep | PGA Sultan | 7–12 | Shamble | 2 | 0.5 | 1 |
@@ -116,6 +117,16 @@ Match strokes    = the difference, so the lower side plays off scratch
 Strokes per hole = allocated by stroke index, wrapping above 18
 ```
 
+Two details that matter on this tour:
+
+- **Pairs play off one handicap.** A scramble or shamble pair play off
+  `floor((CH1 + CH2) / 2)`. The lower pair play off zero; the higher receive the
+  difference.
+- **Six-hole matches allocate over six holes.** Day 3's blocks give out the
+  *whole* stroke difference across the holes actually being played, ranked by
+  those holes' own stroke index — so a side owed 8 shots over holes 1–6
+  receives 8, not the two that happened to carry SI 1 and 2 on the full card.
+
 Handicap indexes are supplied by the organiser and entered by hand (Tour
 settings → Players records who changed them and when):
 
@@ -134,11 +145,11 @@ that format, or per match in **Tour settings → Formats & pairings**):
 
 | Format | Allowance |
 | --- | --- |
-| 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) |
-| Better Ball | 90% each |
-| Singles | 100% |
-| 2-Man Scramble | 35 / 15% |
-| Shamble | 90% each (own ball in from the chosen drive) |
+| 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) — unused by this tour, kept selectable |
+| Better Ball | 100% each, lowest player in the match off zero |
+| Singles | 100% each, lower player off zero |
+| 2-Man Scramble | 50 / 50 rounded down — `floor((CH1 + CH2) / 2)` for the pair |
+| Shamble | 50 / 50 rounded down — one team handicap, both balls net against it |
 | Alternate Shot | 50% of combined |
 
 Plus handicaps are supported and give strokes back from the easiest holes.
@@ -199,6 +210,7 @@ Two different things, stored in two different tables, on purpose.
 | Answers | Who do I walk round with? | Who am I playing against? |
 | Changes | Day to day, often on the first tee | Set before the round by the organiser |
 | Edited by | **Anyone** | **Anyone** |
+| Submitted by | **Anyone — one person is enough** | **Anyone — one person is enough** |
 | Where | Round → Edit 4-balls | Round → Edit matchups |
 
 They coincide on a better-ball day — one 4-ball is one match — and diverge
@@ -257,9 +269,17 @@ everything up does not make it easy to break something by accident:
   needed to play.
 - **Set-up things are behind More → Tour settings**: handicaps, courses, tee
   choices, formats, points, rules. You go there deliberately.
-- **The matchup editor writes one column.** `/api/matchups` only ever updates
-  `match_sides.player_ids`, so the screen everyone uses cannot change a format,
-  a hole range or a points value even if it wanted to.
+- **The matchup editor writes one column plus a confirmation.** `/api/matchups`
+  only ever updates `match_sides.player_ids` and the two
+  `matches.pairings_confirmed_*` columns, so the screen everyone uses cannot
+  change a format, a hole range or a points value even if it wanted to.
+- **Pairings are submitted, not approved.** Both editors have a Save and a
+  Submit. Submitting stamps `confirmed_at` / `confirmed_by`, and **one person
+  is enough** — nothing counts votes. Any later plain save clears the stamp,
+  because what was agreed is no longer what is on the screen. The round screen
+  shows the three states (`not-set` / `draft` / `confirmed`) per section, so
+  Day 3's three six-hole blocks are submitted independently. See
+  `src/lib/rounds/confirmation.ts`.
 - **Destructive actions confirm.** Wiping the scores is on the settings screen
   behind an explicit confirmation, and `score_events` keeps the audit trail
   regardless.

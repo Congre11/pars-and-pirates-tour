@@ -150,21 +150,35 @@ const SEED_ROUNDS: SeedRound[] = [
     name: 'Day 1 — Scramble',
     date: '2026-08-29',
     courseKey: 'faldo',
-    formatLabel: '4-Man Team Scramble',
+    formatLabel: '2-Man Scramble',
     teeTime: '11:00',
     notes:
       'Breakfast 08:00–09:30. Springboks v New Zealand at 17:00 — Springbok jerseys are a must. Day 2 teams announced after the rugby.',
+    // Two 4-balls, each one a 2-man scramble match worth a point, so the day
+    // is still worth 2. The pairings follow the default 4-balls.
     matches: [
       {
         key: 'd1-m1',
-        name: 'The Scramble',
-        format: 'team_scramble',
+        name: 'Scramble 1',
+        format: 'two_man_scramble',
         startHole: 1,
         endHole: 18,
-        points: 2,
+        points: 1,
         sides: [
-          ['jason-dunbar', 'alan-hector', 'andrew-rushmere', 'ryan-dahl'],
-          ['jordy-west', 'connor-grealy', 'nick-georgoulakis', 'dan-kramer'],
+          ['jason-dunbar', 'alan-hector'],
+          ['jordy-west', 'connor-grealy'],
+        ],
+      },
+      {
+        key: 'd1-m2',
+        name: 'Scramble 2',
+        format: 'two_man_scramble',
+        startHole: 1,
+        endHole: 18,
+        points: 1,
+        sides: [
+          ['andrew-rushmere', 'ryan-dahl'],
+          ['nick-georgoulakis', 'dan-kramer'],
         ],
       },
     ],
@@ -374,7 +388,7 @@ const SEED_ITINERARY: SeedItineraryItem[] = [
 
   // 29 Aug 2026 — Golf Day 1
   { date: '2026-08-29', startTime: '08:00', endTime: '09:30', title: 'Breakfast', location: 'Hotel', details: null, category: 'meal' },
-  { date: '2026-08-29', startTime: '11:00', endTime: null, title: 'GOLF DAY 1 — Faldo Course', location: 'Cornelia Golf Club, Belek', details: '4-Man Team Scramble. Tee off 11:00.', category: 'golf', roundKey: 'day-1' },
+  { date: '2026-08-29', startTime: '11:00', endTime: null, title: 'GOLF DAY 1 — Faldo Course', location: 'Cornelia Golf Club, Belek', details: '2-Man Scramble — two matches. Tee off 11:00.', category: 'golf', roundKey: 'day-1' },
   { date: '2026-08-29', startTime: '17:00', endTime: null, title: 'Springboks v New Zealand', location: 'Hotel bar', details: 'Springbok jerseys are a must. Non-negotiable.', category: 'sport' },
   { date: '2026-08-29', startTime: '19:30', endTime: null, title: 'Day 2 teams announced', location: 'Hotel', details: 'Captains announce the Better Ball pairings after the rugby.', category: 'ceremony' },
 
@@ -576,6 +590,10 @@ export function buildSeedSnapshot(): TourSnapshot {
         sortOrder: groupIndex,
         updatedBy: 'Seeded default',
         updatedAt: HANDICAPS_SUPPLIED_AT,
+        // Seeded groups are a starting point, not a decision — somebody still
+        // confirms them on the day.
+        confirmedAt: null,
+        confirmedBy: null,
       });
     });
 
@@ -592,6 +610,8 @@ export function buildSeedSnapshot(): TourSnapshot {
         // Seeded matches use the tour default allowance for their format.
         // Admin -> Pairings can give any one of them its own.
         allowanceOverride: null,
+        pairingsConfirmedAt: null,
+        pairingsConfirmedBy: null,
         status: 'upcoming',
         sortOrder: matchIndex,
       });
