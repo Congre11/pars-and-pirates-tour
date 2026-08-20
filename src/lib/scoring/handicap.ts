@@ -5,7 +5,7 @@
  * database, a browser or a golf course.
  */
 
-import { allowanceFor } from '@/lib/types';
+import { allowanceFor, playsOffOwnHandicap } from '@/lib/types';
 import type { HandicapAllowance, Hole, MatchFormat, Player, Tee, TourSettings } from '@/lib/types';
 
 function applyRounding(value: number, rounding: HandicapAllowance['rounding']): number {
@@ -59,14 +59,28 @@ export function sidePlayingHandicap(
     // Per-player allowance: apply the same percentage to everyone and sum.
     // With one player (singles) this is simply that player's allowance.
     const total = sorted.reduce((sum, ch) => sum + ch * weights[0], 0);
-    return applyRounding(total, allowance.rounding);
+    return secondStage(applyRounding(total, allowance.rounding), allowance);
   }
 
   const total = sorted.reduce((sum, ch, i) => {
     const weight = weights[i] ?? weights[weights.length - 1];
     return sum + ch * weight;
   }, 0);
-  return applyRounding(total, allowance.rounding);
+  return secondStage(applyRounding(total, allowance.rounding), allowance);
+}
+
+/**
+ * Apply an allowance's optional second stage to an already-rounded figure.
+ *
+ * The scramble and shamble rule rounds twice — the average down, then 80% of
+ * that down again — and the two roundings are not interchangeable with one.
+ * Verified safe against floating point for every integer average up to 60:
+ * `12 * 0.8` is `9.600000000000001` and still floors to 9, and no value in
+ * range lands just under a whole number.
+ */
+function secondStage(value: number, allowance: HandicapAllowance): number {
+  if (!allowance.then) return value;
+  return applyRounding(value * allowance.then.factor, allowance.then.rounding);
 }
 
 /**
@@ -160,8 +174,16 @@ export interface SideHandicapResult {
 }
 
 /**
- * Compute both sides' handicaps for a match, including the match-play
- * "difference" adjustment where the lower side plays off scratch.
+ * Compute both sides' handicaps for a match.
+ *
+ * Every format this tour plays keeps its handicap IN FULL — see
+ * ABSOLUTE_HANDICAP_FORMATS. A scramble pair on 16 meets a pair on 9 as 16
+ * against 9; better-ball players on 4, 11, 15 and 22 play 4 / 11 / 15 / 22;
+ * singles on 8 and 13 play 8 against 13. Nobody plays off zero.
+ *
+ * The match-play "difference" is still implemented for the two formats that
+ * have no agreed rule (`team_scramble`, `foursomes`), so the engine remains
+ * correct for a round this tour does not happen to play.
  */
 export function computeMatchHandicaps(
   sides: SideHandicapInput[],
@@ -207,7 +229,23 @@ export function computeMatchHandicaps(
 
   if (!settings.handicapsEnabled) return raw;
 
-  if (settings.handicapMode === 'difference') {
+  // A per-player side's own figure is the LOWEST of its players, not the sum
+  // of them. Set here so it is meaningful whether or not a difference is
+  // applied below — `sidePlayingHandicap` adds a better-ball pair together,
+  // which is not a number that means anything on a scorecard.
+  if (isPerPlayerFormat(format)) {
+    for (const side of raw) {
+      const values = Object.values(side.playerPlayingHandicaps);
+      side.playingHandicap = values.length ? Math.min(...values) : 0;
+    }
+  }
+
+  // Every format this tour plays now keeps its own handicap in full — see
+  // ABSOLUTE_HANDICAP_FORMATS. Nobody is put off zero and nobody is reduced
+  // relative to the lowest player. What remains below can only reach
+  // `team_scramble` and `foursomes`, neither of which this tour uses; it is
+  // kept so the engine is still a correct match-play engine for other rounds.
+  if (settings.handicapMode === 'difference' && !playsOffOwnHandicap(format)) {
     if (isPerPlayerFormat(format)) {
       // Everyone plays off the difference from the lowest player in the match.
       const all = raw.flatMap((side) => Object.values(side.playerPlayingHandicaps));
@@ -237,7 +275,7 @@ export function isPerPlayerFormat(format: MatchFormat): boolean {
   //
   // A shamble is the interesting case: each player finishes their own ball, so
   // two scores are recorded, but the pair plays off a single team handicap of
-  // floor((CH1 + CH2) / 2). Both balls are therefore netted against the same
+  // floor(floor((CH1 + CH2) / 2) x 0.8). Both balls net against that same
   // side strokes — see `computeMatch`.
   return format === 'singles' || format === 'better_ball';
 }

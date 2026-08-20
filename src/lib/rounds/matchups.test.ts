@@ -3,6 +3,7 @@ import {
   assignToSide,
   checkMatchups,
   draftSidesFor,
+  halvesAwardNothing,
   matchupsDirty,
   sectionsForRound,
   swapInSection,
@@ -211,5 +212,32 @@ describe('matchupsDirty', () => {
 
   it('is true once a player actually moves', () => {
     expect(matchupsDirty(swapInSection(saved, 'alan', 'connor'), saved)).toBe(true);
+  });
+});
+
+describe('halvesAwardNothing', () => {
+  const at = (startHole: number, endHole: number): Match => match({ startHole, endHole });
+
+  it('is true for a round split into more than one hole range', () => {
+    // Day 3: three six-hole sections. A halve there pays nobody.
+    expect(
+      halvesAwardNothing([at(1, 6), at(7, 12), at(13, 18)]),
+    ).toBe(true);
+  });
+
+  it('is false for a round played as one contest over 18', () => {
+    // Days 1, 2 and 4: a halve still splits the point.
+    expect(halvesAwardNothing([at(1, 18), at(1, 18)])).toBe(false);
+  });
+
+  it('is false for a round with no matches at all', () => {
+    expect(halvesAwardNothing([])).toBe(false);
+  });
+
+  it('keys on the hole ranges, not on how many matches there are', () => {
+    // Day 4 is four singles over the same 18 holes — one contest, not four.
+    expect(
+      halvesAwardNothing([at(1, 18), at(1, 18), at(1, 18), at(1, 18)]),
+    ).toBe(false);
   });
 });

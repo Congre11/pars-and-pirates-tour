@@ -89,6 +89,24 @@ export function sectionsForRound(matches: Match[], holeCount = 18): MatchupSecti
 }
 
 /**
+ * Does a halved match on this round award nothing?
+ *
+ * Day 3's captains' rule: a halve pays 0 to both sides and the half point is
+ * burned. Keyed on the round's shape rather than its day number, so nothing is
+ * hard-coded — a round split into more than one hole range is the same
+ * structural signature the derived pairings already use, and Day 3 is the only
+ * round on this tour that has it.
+ *
+ * The point is still ADVERTISED. The tour stays an 11-point tour and Day 3
+ * stays worth 3; a burned half leaves the total unclaimed rather than reducing
+ * what was on offer.
+ */
+export function halvesAwardNothing(roundMatches: Match[]): boolean {
+  const ranges = new Set(roundMatches.map((m) => `${m.startHole}-${m.endHole}`));
+  return ranges.size > 1;
+}
+
+/**
  * Check one section's matchups.
  *
  * The rules are per section, because a player quite legitimately appears in

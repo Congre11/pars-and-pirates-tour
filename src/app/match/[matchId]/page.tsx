@@ -7,9 +7,23 @@ import { useSession } from '@/lib/auth/session-provider';
 import { ScoreEntry } from '@/components/ScoreEntry';
 import { ScorecardTable } from '@/components/ScorecardTable';
 import { PageHeader, SectionTitle, Warning } from '@/components/ui';
-import { FORMAT_LABELS, allowanceForMatch } from '@/lib/types';
+import { FORMAT_LABELS, allowanceForMatch, type HandicapAllowance } from '@/lib/types';
 import { courseHandicapLabel, handicapLabel } from '@/lib/format';
 import { ordinal } from '@/lib/tour-helpers';
+
+/**
+ * The allowance in a few words, for the strip under the scorecard header.
+ *
+ * A two-stage rule cannot be summed up by its first weight: the pair formats
+ * are 50/50 rounded down and THEN 80%, so printing "50% allowance" would name
+ * a figure the engine never uses.
+ */
+function describeAllowance(allowance: HandicapAllowance): string {
+  if (allowance.then) {
+    return `avg of both, then ${Math.round(allowance.then.factor * 100)}%`;
+  }
+  return `${Math.round((allowance.weights[0] ?? 1) * 100)}% allowance`;
+}
 
 /**
  * The live scorecard. This is the screen the app exists for.
@@ -174,7 +188,7 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
           <p className="mt-2 border-t border-white/6 pt-2 text-[0.68rem] text-chalk-500">
             {tee.name} tees · CR {tee.courseRating} / Slope {tee.slopeRating} ·{' '}
             {snapshot.tour.settings.handicapsEnabled
-              ? `${Math.round((allowanceForMatch(match, snapshot.tour.settings).weights[0] ?? 1) * 100)}% allowance`
+              ? describeAllowance(allowanceForMatch(match, snapshot.tour.settings))
               : 'Playing off scratch'}
           </p>
         )}

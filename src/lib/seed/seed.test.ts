@@ -4,6 +4,8 @@ import { computeMatch, computeStandings } from '@/lib/scoring/engine';
 import type { MatchOutcome } from '@/lib/scoring/engine';
 import { describeRoundFormat, planRound } from '@/lib/rounds/format-plan';
 import { checkFourBalls } from '@/lib/rounds/four-balls';
+import { halvesAwardNothing } from '@/lib/rounds/matchups';
+import { courseHandicap } from '@/lib/scoring/handicap';
 
 /**
  * Locks the tournament points structure and the supplied handicap indexes.
@@ -111,6 +113,9 @@ describe('tournament points structure', () => {
         tee: snapshot.tees.find((t) => t.id === round.teeId)!,
         scores: [],
         settings: snapshot.tour.settings,
+        halveAwardsNothing: halvesAwardNothing(
+          snapshot.matches.filter((m) => m.roundId === round.id),
+        ),
       });
     });
 
@@ -429,5 +434,181 @@ describe('the seeded format plan is a default, not a fixture', () => {
     for (const match of snapshot.matches) {
       expect(match.name, `${match.name} embeds a hole range`).not.toMatch(/H\d+\s*[–-]\s*\d+/);
     }
+  });
+});
+
+describe('the captains’ revised handicap and points rules', () => {
+  const round = (dayNo: number) => snapshot.rounds.find((r) => r.dayNo === dayNo)!;
+  const matchesOn = (dayNo: number) =>
+    snapshot.matches
+      .filter((m) => m.roundId === round(dayNo).id)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  function outcome(match: (typeof snapshot.matches)[number]) {
+    const r = snapshot.rounds.find((x) => x.id === match.roundId)!;
+    return computeMatch({
+      match,
+      sides: snapshot.sides.filter((s) => s.matchId === match.id),
+      players: snapshot.players,
+      holes: snapshot.holes.filter((h) => h.courseId === r.courseId),
+      tee: snapshot.tees.find((t) => t.id === r.teeId)!,
+      scores: [],
+      settings: snapshot.tour.settings,
+      halveAwardsNothing: halvesAwardNothing(
+        snapshot.matches.filter((m) => m.roundId === r.id),
+      ),
+    });
+  }
+
+  /** The agreed rule, written out longhand so the test is not the code. */
+  const pairRule = (ch1: number, ch2: number) => Math.floor(Math.floor((ch1 + ch2) / 2) * 0.8);
+
+  const pairFormats = ['two_man_scramble', 'shamble'] as const;
+
+  it('plays every scramble and shamble off floor(floor((CH1+CH2)/2) × 0.8)', () => {
+    const checked: string[] = [];
+    for (const dayNo of [1, 3]) {
+      const r = round(dayNo);
+      const tee = snapshot.tees.find((t) => t.id === r.teeId)!;
+      for (const match of matchesOn(dayNo)) {
+        if (!pairFormats.includes(match.format as (typeof pairFormats)[number])) continue;
+        const o = outcome(match);
+        for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+          const chs = side.playerIds.map(
+            (id) =>
+              courseHandicap(snapshot.players.find((p) => p.id === id)!.handicapIndex ?? 0, tee),
+          );
+          expect(o.teamHandicaps[side.id]).toBe(pairRule(chs[0], chs[1]));
+          checked.push(`${dayNo}:${match.name}`);
+        }
+      }
+    }
+    // Day 1's two scrambles and Day 3's two scrambles + two shambles, 2 sides each.
+    expect(checked).toHaveLength(12);
+  });
+
+  it('lets both pairs keep their own handicap — nobody is dragged to zero', () => {
+    for (const dayNo of [1, 3]) {
+      for (const match of matchesOn(dayNo)) {
+        if (!pairFormats.includes(match.format as (typeof pairFormats)[number])) continue;
+        const o = outcome(match);
+        for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+          expect(o.handicaps[side.id].playingHandicap).toBe(o.teamHandicaps[side.id]);
+          expect(o.handicaps[side.id].playingHandicap).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('deals each side’s own strokes across only the holes it plays', () => {
+    for (const match of matchesOn(3)) {
+      if (!pairFormats.includes(match.format as (typeof pairFormats)[number])) continue;
+      const o = outcome(match);
+      for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+        const alloc = o.sideStrokes[side.id];
+        const holeNos = Object.keys(alloc).map(Number);
+        expect(holeNos).toHaveLength(6);
+        expect(holeNos.every((n) => n >= match.startHole && n <= match.endHole)).toBe(true);
+        expect(Object.values(alloc).reduce((a, b) => a + b, 0)).toBe(
+          o.handicaps[side.id].playingHandicap,
+        );
+      }
+    }
+  });
+
+  it('gives the Shamble the same team handicaps as the Scramble', () => {
+    // Same pairs, same course, same tee — so the same figure, section by section.
+    const byPair = new Map<string, number[]>();
+    for (const match of matchesOn(3)) {
+      if (!pairFormats.includes(match.format as (typeof pairFormats)[number])) continue;
+      const o = outcome(match);
+      for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+        const key = [...side.playerIds].sort().join(',');
+        byPair.set(key, [...(byPair.get(key) ?? []), o.teamHandicaps[side.id]!]);
+      }
+    }
+    expect(byPair.size).toBe(4);
+    for (const [, values] of byPair) {
+      expect(values).toHaveLength(2); // one scramble, one shamble
+      expect(values[0]).toBe(values[1]);
+    }
+  });
+
+  /** Every per-player format plays each player off their FULL course handicap. */
+  function expectFullIndividualHandicaps(dayNo: number) {
+    const r = round(dayNo);
+    const tee = snapshot.tees.find((t) => t.id === r.teeId)!;
+    for (const match of matchesOn(dayNo)) {
+      if (match.format !== 'better_ball' && match.format !== 'singles') continue;
+      const o = outcome(match);
+      // Nobody carries a team handicap, and nobody is reduced to anyone else.
+      expect(Object.values(o.teamHandicaps).every((v) => v === null)).toBe(true);
+      for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+        for (const id of side.playerIds) {
+          const ch = courseHandicap(
+            snapshot.players.find((p) => p.id === id)!.handicapIndex ?? 0,
+            tee,
+          );
+          expect(o.handicaps[side.id].playerPlayingHandicaps[id]).toBe(ch);
+        }
+      }
+    }
+  }
+
+  it('plays Day 3 Better Ball off full individual course handicaps', () => {
+    expectFullIndividualHandicaps(3);
+  });
+
+  it('plays Day 2 Better Ball and Day 4 Singles off full individual handicaps', () => {
+    for (const dayNo of [2, 4]) expectFullIndividualHandicaps(dayNo);
+  });
+
+  it('never puts anybody off zero on any day', () => {
+    // The rule the captains were most explicit about: 4, 11, 15 and 22 play as
+    // 4 / 11 / 15 / 22, and 8 against 13 plays 8 against 13.
+    for (const match of snapshot.matches) {
+      const o = outcome(match);
+      const all = [
+        ...Object.values(o.handicaps).flatMap((h) => Object.values(h.playerPlayingHandicaps)),
+        ...Object.values(o.teamHandicaps).filter((v): v is number => v !== null),
+      ];
+      expect(all.every((v) => v > 0)).toBe(true);
+    }
+  });
+
+  it('leaves Day 2 and Day 4 splitting a halved match as usual', () => {
+    for (const dayNo of [2, 4]) expect(halvesAwardNothing(matchesOn(dayNo))).toBe(false);
+  });
+
+  it('burns a halved Day 3 match but keeps the tour advertised as 11 points', () => {
+    const outcomes = snapshot.matches.map((m) => {
+      const o = outcome(m);
+      const isDay3 = m.roundId === round(3).id;
+      // Force every Day 3 match to have finished level.
+      return isDay3
+        ? {
+            ...o,
+            isComplete: true,
+            winnerSideId: null,
+            finalStatus: 'Halved',
+            points: Object.fromEntries(Object.keys(o.points).map((id) => [id, 0])),
+            projectedPoints: Object.fromEntries(Object.keys(o.points).map((id) => [id, 0])),
+          }
+        : o;
+    });
+
+    const standings = computeStandings(
+      outcomes,
+      new Map(
+        snapshot.matches.map((m) => [m.id, snapshot.sides.filter((s) => s.matchId === m.id)]),
+      ),
+      snapshot.teams.map((t) => t.id),
+    );
+
+    expect(standings.pointsTotal).toBe(11);
+    expect(standings.pointsToWin).toBe(6);
+    // The 3 Day 3 points went unclaimed rather than being shared out.
+    for (const team of snapshot.teams) expect(standings.byTeam[team.id].points).toBe(0);
+    expect(standings.pointsRemaining).toBe(8);
   });
 });

@@ -172,7 +172,7 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
   );
   const derived = derivation.pairings;
 
-  /** floor((CH1 + CH2) / 2) for a pair, off this round's tee. */
+  /** floor(floor((CH1 + CH2) / 2) × 0.8) for a pair, off this round's tee. */
   const teamHandicap = (playerIds: string[]): number | null => {
     if (!tee) return null;
     const chs = playerIds.map((id) => {
@@ -334,9 +334,11 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
                 ))}
               </ul>
               <p className="mt-2.5 border-t border-white/6 pt-2 text-xs leading-snug text-chalk-500">
-                Team handicap is <span className="text-chalk-300">floor((CH1 + CH2) / 2)</span>, used
-                for the Scramble and the Shamble. The Better Ball section uses the four individual
-                course handicaps instead, with the lowest of them off zero.
+                Team handicap is{' '}
+                <span className="text-chalk-300">floor(floor((CH1 + CH2) / 2) × 0.8)</span>, used for
+                the Scramble and the Shamble. Both pairs keep their own — nobody plays off zero, so
+                both receive strokes. The Better Ball section uses the four individual course
+                handicaps instead, each in full.
               </p>
             </>
           ) : (

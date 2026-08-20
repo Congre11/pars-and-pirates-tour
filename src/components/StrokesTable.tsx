@@ -14,8 +14,8 @@ import { FORMAT_LABELS, type Round } from '@/lib/types';
  * never disagree with what the scorecard actually awards.
  *
  * These are COURSE handicaps off the round's selected tee, before the
- * format-specific allowance. The per-match strokes (after allowance and the
- * match-play difference) are shown on each scorecard.
+ * format-specific allowance. The per-match strokes, after that allowance, are
+ * shown on each scorecard.
  */
 export function StrokesTable({ round }: { round: Round }) {
   const { snapshot, teeById, holesForCourse, teamById } = useTour();
@@ -143,16 +143,17 @@ export function StrokesTable({ round }: { round: Round }) {
  *
  * The table above is course handicaps — the raw number off the tee. This is the
  * next step, and the one people argue about on the first tee: after the format
- * allowance and the match-play difference, who is giving shots to whom.
+ * allowance, what each side actually plays off. Nothing is subtracted at this
+ * step, so nobody appears on zero unless their handicap is zero.
  *
  * Two shapes, because the formats genuinely differ:
  *
  *   scramble / shamble — the pair play off ONE combined handicap,
- *                        floor((CH1 + CH2) / 2), and the lower pair play off
- *                        zero while the higher receive the difference.
+ *                        floor(floor((CH1 + CH2) / 2) x 0.8), and BOTH pairs
+ *                        keep their own, so both receive strokes.
  *   better ball / singles — every player carries their own 100% course
- *                        handicap, and the lowest player IN THAT MATCH plays
- *                        off zero while the rest receive the difference.
+ *                        handicap IN FULL. Nobody is reduced to the lowest
+ *                        player: 4, 11, 15 and 22 play as 4 / 11 / 15 / 22.
  *
  * Every number here comes from the engine's own outcome, not a re-computation,
  * so it cannot drift from what the scorecard awards.
@@ -168,7 +169,9 @@ export function MatchHandicaps({ round }: { round: Round }) {
       <div className="border-b border-white/8 px-3.5 py-2.5">
         <div className="label">Playing handicaps</div>
         <p className="mt-0.5 text-xs text-chalk-500">
-          After the format allowance and the match-play difference. The lower side plays off zero.
+          Everyone plays off their handicap in full. Scramble and Shamble pairs use one team
+          handicap each; Better Ball and Singles use each player’s own course handicap. Nobody
+          plays off zero.
         </p>
       </div>
 
@@ -219,7 +222,9 @@ export function MatchHandicaps({ round }: { round: Round }) {
                               courseHandicapLabel(handicaps?.playerPlayingHandicaps[id] ?? 0),
                             )
                             .join(' / ')
-                        : `Team ${courseHandicapLabel(teamHandicap ?? 0)} → plays ${courseHandicapLabel(plays)}`}
+                        : // A pair plays off its team handicap in full, so there is
+                          // one number, not a "before and after the difference" pair.
+                          `Team ${courseHandicapLabel(teamHandicap ?? plays)}`}
                     </span>
                   </div>
                 );

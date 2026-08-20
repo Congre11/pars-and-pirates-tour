@@ -23,6 +23,7 @@ import {
   type ReactNode,
 } from 'react';
 import { computeMatch, computeStandings, type MatchOutcome, type Standings } from '@/lib/scoring/engine';
+import { halvesAwardNothing } from '@/lib/rounds/matchups';
 import { LocalTourStore } from './local-store';
 import { SupabaseTourStore } from './supabase-store';
 import {
@@ -129,8 +130,8 @@ function emptySnapshot(): TourSnapshot {
           team_scramble: { weights: [0.2, 0.15, 0.1, 0.05], rounding: 'nearest' },
           better_ball: { weights: [1], rounding: 'nearest' },
           singles: { weights: [1], rounding: 'nearest' },
-          two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
-          shamble: { weights: [0.5, 0.5], rounding: 'floor' },
+          two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
+          shamble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
           foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
         },
       },
@@ -448,6 +449,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
           tee,
           scores: indexes.scoresByMatch.get(match.id) ?? [],
           settings: snapshot.tour.settings,
+          // A halve on a multi-section round (Day 3) pays nobody.
+          halveAwardsNothing: halvesAwardNothing(indexes.matchesByRound.get(match.roundId) ?? []),
         }),
       );
     }

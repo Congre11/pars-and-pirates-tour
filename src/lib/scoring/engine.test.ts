@@ -460,14 +460,14 @@ describe('better ball', () => {
     expect(outcome.holes[0].winnerSideId).toBe('side-b');
   });
 
-  it('applies strokes received off the low player in the match', () => {
+  it('applies each player their own full course handicap', () => {
     const outcome = run([], DEFAULT_TOUR_SETTINGS);
-    // Better ball is played off 100% of each player's course handicap:
+    // Better ball is played off 100% of each player's course handicap, IN
+    // FULL — nobody is reduced to the lowest player in the match:
     //   a1 8  -> 8*130/113 - 1 = 8.20  -> 8
     //   b1 4  -> 4*130/113 - 1 = 3.60  -> 4
-    // Lowest in the match is b1 on 4, so everyone plays off the difference.
-    expect(outcome.handicaps['side-b'].playerPlayingHandicaps['b1']).toBe(0);
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps['a1']).toBe(4);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps['b1']).toBe(4);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps['a1']).toBe(8);
     // a2 (18) gets the most strokes of anyone.
     expect(outcome.handicaps['side-a'].playerPlayingHandicaps['a2']).toBeGreaterThan(
       outcome.handicaps['side-a'].playerPlayingHandicaps['a1'],
@@ -475,16 +475,34 @@ describe('better ball', () => {
   });
 
   it('nets the score using the strokes received on that hole', () => {
+    // a1 is on 8 and b1 on 4, both in full, so on SI 1 they BOTH get a stroke.
     const outcome = run(
       [
-        score('side-a', 1, 5, 'a1'), // SI 1: a1 gets a stroke -> net 4
-        score('side-b', 1, 4, 'b1'), // scratch -> net 4
+        score('side-a', 1, 5, 'a1'), // 5 - 1 = net 4
+        score('side-b', 1, 4, 'b1'), // 4 - 1 = net 3
       ],
       DEFAULT_TOUR_SETTINGS,
     );
     expect(outcome.holes[0].sides[0].strokesReceived).toBe(1);
+    expect(outcome.holes[0].sides[1].strokesReceived).toBe(1);
     expect(outcome.holes[0].sides[0].net).toBe(4);
-    expect(outcome.holes[0].halved).toBe(true);
+    expect(outcome.holes[0].sides[1].net).toBe(3);
+    expect(outcome.holes[0].winnerSideId).toBe('side-b');
+  });
+
+  it('separates the sides on a hole only one of them receives a stroke on', () => {
+    // SI 5 is inside a1's 8 but outside b1's 4, so only a1 gets a shot there.
+    const outcome = run(
+      [
+        score('side-a', 5, 5, 'a1'), // 5 - 1 = net 4
+        score('side-b', 5, 4, 'b1'), // 4 - 0 = net 4
+      ],
+      DEFAULT_TOUR_SETTINGS,
+    );
+    const hole = outcome.holes.find((h) => h.holeNo === 5)!;
+    expect(hole.sides[0].strokesReceived).toBe(1);
+    expect(hole.sides[1].strokesReceived).toBe(0);
+    expect(hole.halved).toBe(true);
   });
 });
 
@@ -783,7 +801,7 @@ describe('team handicaps for scramble and shamble', () => {
     player('p4', 'team-b', 6.0),
   ];
 
-  it('averages the pair and rounds down, then plays off the difference', () => {
+  it('averages the pair, rounds down, takes 80% and rounds down again', () => {
     const outcome = computeMatch({
       match: match({ format: 'two_man_scramble' }),
       sides: sides(['p1', 'p2'], ['p3', 'p4']),
@@ -794,12 +812,46 @@ describe('team handicaps for scramble and shamble', () => {
       settings: DEFAULT_TOUR_SETTINGS,
     });
 
-    // floor((13 + 22) / 2) = 17 against floor((6 + 6) / 2) = 6.
-    expect(outcome.teamHandicaps['side-a']).toBe(17);
-    expect(outcome.teamHandicaps['side-b']).toBe(6);
-    // The lower pair play off zero; the higher receive the difference.
-    expect(outcome.handicaps['side-b'].playingHandicap).toBe(0);
-    expect(outcome.handicaps['side-a'].playingHandicap).toBe(11);
+    // floor((13 + 22) / 2) = 17, x0.8 = 13.6, floor = 13.
+    // floor((6 + 6) / 2)   =  6, x0.8 =  4.8, floor =  4.
+    expect(outcome.teamHandicaps['side-a']).toBe(13);
+    expect(outcome.teamHandicaps['side-b']).toBe(4);
+  });
+
+  it('lets BOTH pairs keep their own handicap — nobody plays off zero', () => {
+    const outcome = computeMatch({
+      match: match({ format: 'two_man_scramble' }),
+      sides: sides(['p1', 'p2'], ['p3', 'p4']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+
+    // The captains' rule: 13 against 4, not 9 against 0.
+    expect(outcome.handicaps['side-a'].playingHandicap).toBe(13);
+    expect(outcome.handicaps['side-b'].playingHandicap).toBe(4);
+    // And so both sides actually receive strokes.
+    expect(Object.values(outcome.sideStrokes['side-a']).reduce((a, b) => a + b, 0)).toBe(13);
+    expect(Object.values(outcome.sideStrokes['side-b']).reduce((a, b) => a + b, 0)).toBe(4);
+  });
+
+  it('rounds the average BEFORE taking 80%, which an odd sum can detect', () => {
+    // CH 13 and CH 12: floor(25/2) = 12, x0.8 = 9.6 -> 9.
+    // Folding it into one stage (0.4 + 0.4 of 25 = 10.0) would give 10.
+    const odd = [player('q1', 'team-a', 12.0), player('q2', 'team-a', 11.0)];
+    const outcome = computeMatch({
+      match: match({ format: 'two_man_scramble' }),
+      sides: sides(['q1', 'q2'], ['p3', 'p4']),
+      players: [...odd, ...players],
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+    expect(outcome.handicaps['side-a'].courseHandicaps).toEqual({ q1: 13, q2: 12 });
+    expect(outcome.teamHandicaps['side-a']).toBe(9);
   });
 
   it('nets both shamble balls against the one team handicap', () => {
@@ -815,7 +867,7 @@ describe('team handicaps for scramble and shamble', () => {
       settings: DEFAULT_TOUR_SETTINGS,
     });
 
-    expect(outcome.teamHandicaps['side-a']).toBe(17);
+    expect(outcome.teamHandicaps['side-a']).toBe(13);
     expect(outcome.playerStrokes['p1']).toEqual(outcome.sideStrokes['side-a']);
     expect(outcome.playerStrokes['p2']).toEqual(outcome.sideStrokes['side-a']);
   });
@@ -829,7 +881,7 @@ describe('better ball is played off full course handicaps', () => {
     player('p4', 'team-b', 18.0), // CH 20
   ];
 
-  it('gives every player 100% of their own handicap, off the lowest in the match', () => {
+  it('gives every player 100% of their own handicap, in full', () => {
     const outcome = computeMatch({
       match: match({ format: 'better_ball' }),
       sides: sides(['p1', 'p2'], ['p3', 'p4']),
@@ -846,20 +898,21 @@ describe('better ball is played off full course handicaps', () => {
     expect(a.courseHandicaps).toEqual({ p1: 13, p2: 22 });
     expect(b.courseHandicaps).toEqual({ p3: 6, p4: 20 });
 
-    // p3 is the lowest of the four, so plays off zero and the other three
-    // receive the difference from him.
-    expect(b.playerPlayingHandicaps.p3).toBe(0);
-    expect(a.playerPlayingHandicaps.p1).toBe(7);
-    expect(a.playerPlayingHandicaps.p2).toBe(16);
-    expect(b.playerPlayingHandicaps.p4).toBe(14);
+    // Everyone keeps their own course handicap. Nobody plays off zero and
+    // nobody is reduced relative to p3, the lowest of the four.
+    expect(b.playerPlayingHandicaps.p3).toBe(6);
+    expect(a.playerPlayingHandicaps.p1).toBe(13);
+    expect(a.playerPlayingHandicaps.p2).toBe(22);
+    expect(b.playerPlayingHandicaps.p4).toBe(20);
 
     // Each plays their own ball, so nobody shares a side handicap.
     expect(outcome.teamHandicaps['side-a']).toBeNull();
     expect(outcome.teamHandicaps['side-b']).toBeNull();
   });
 
-  it('takes the lowest from within this match, not the whole field', () => {
-    // Same four players, but p3 is not in this match. p1 becomes the lowest.
+  it('does not depend on who else is in the match', () => {
+    // Same players, different opponents. Because nobody is reduced to the
+    // lowest, each player's figure is the same whoever they are drawn against.
     const outcome = computeMatch({
       match: match({ format: 'better_ball' }),
       sides: sides(['p1', 'p2'], ['p4', 'p4']),
@@ -869,14 +922,14 @@ describe('better ball is played off full course handicaps', () => {
       scores: [],
       settings: DEFAULT_TOUR_SETTINGS,
     });
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p1).toBe(0);
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p2).toBe(9);
-    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.p4).toBe(7);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p1).toBe(13);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p2).toBe(22);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.p4).toBe(20);
   });
 });
 
 describe('singles is played off full course handicaps', () => {
-  it('puts the lower player off zero and gives the higher the difference', () => {
+  it('lets both players keep their full course handicap', () => {
     const players = [player('p1', 'team-a', 12.0), player('p2', 'team-b', 20.0)];
     const outcome = computeMatch({
       match: match({ format: 'singles' }),
@@ -887,14 +940,14 @@ describe('singles is played off full course handicaps', () => {
       scores: [],
       settings: DEFAULT_TOUR_SETTINGS,
     });
-    // CH 13 against CH 22.
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p1).toBe(0);
-    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.p2).toBe(9);
+    // CH 13 against CH 22 — played as 13 against 22, not 0 against 9.
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p1).toBe(13);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.p2).toBe(22);
   });
 });
 
 describe('a six-hole match allocates over its own holes', () => {
-  it('gives the full difference out between holes 13 and 18', () => {
+  it('gives each player their whole handicap between holes 13 and 18', () => {
     const players = [player('p1', 'team-a', 12.0), player('p2', 'team-b', 20.0)];
     const outcome = computeMatch({
       match: match({ format: 'singles', startHole: 13, endHole: 18 }),
@@ -906,13 +959,15 @@ describe('a six-hole match allocates over its own holes', () => {
       settings: DEFAULT_TOUR_SETTINGS,
     });
 
-    // p2 is owed 9 over six holes. On this card holes 13..18 carry SI 13..18,
-    // so allocating by raw stroke index would have given him nothing at all.
+    // p2 is on 22 over six holes. On this card holes 13..18 carry SI 13..18,
+    // so allocating by raw stroke index would have given him almost nothing.
     const strokes = outcome.playerStrokes.p2;
     expect(Object.keys(strokes).map(Number).sort((a, b) => a - b)).toEqual([13, 14, 15, 16, 17, 18]);
-    expect(Object.values(strokes).reduce((a, b) => a + b, 0)).toBe(9);
-    // Six holes, nine shots: everyone gets one and the three hardest get two.
-    expect(strokes).toEqual({ 13: 2, 14: 2, 15: 2, 16: 1, 17: 1, 18: 1 });
+    expect(Object.values(strokes).reduce((a, b) => a + b, 0)).toBe(22);
+    // Six holes, 22 shots: three each, and the four hardest get a fourth.
+    expect(strokes).toEqual({ 13: 4, 14: 4, 15: 4, 16: 4, 17: 3, 18: 3 });
+    // p1 is on 13 and receives all of it too — both sides get strokes.
+    expect(Object.values(outcome.playerStrokes.p1).reduce((a, b) => a + b, 0)).toBe(13);
   });
 });
 
@@ -951,26 +1006,26 @@ describe('the four fixed allowances ignore stored settings', () => {
       settings,
     });
 
-  it('scrambles off floor((CH1 + CH2) / 2) even when the record says 35/15', () => {
-    // 35% of 13 + 15% of 22 would be 8; the rule gives floor(35/2) = 17.
-    expect(run('two_man_scramble', STALE).teamHandicaps['side-a']).toBe(17);
-    expect(run('two_man_scramble', STALE).teamHandicaps['side-b']).toBe(6);
+  it('scrambles off the fixed rule even when the record says 35/15', () => {
+    // 35% of 13 + 15% of 22 would be 8; the rule gives floor(floor(35/2) x 0.8) = 13.
+    expect(run('two_man_scramble', STALE).teamHandicaps['side-a']).toBe(13);
+    expect(run('two_man_scramble', STALE).teamHandicaps['side-b']).toBe(4);
   });
 
   it('shambles off the same rule even when the record says 90%', () => {
     // 90% of the combined 35 would be 32.
-    expect(run('shamble', STALE).teamHandicaps['side-a']).toBe(17);
+    expect(run('shamble', STALE).teamHandicaps['side-a']).toBe(13);
   });
 
-  it('plays better ball off 100% even when the record says 90%', () => {
+  it('plays better ball off 100% in full even when the record says 90%', () => {
     const outcome = run('better_ball', STALE);
-    // At 90% a1 would be 12 and a2 20, off a lowest of 5 -> 7 and 15.
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(7);
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a2).toBe(16);
-    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(0);
+    // At 90% a1 would be 12 and a2 20; the rule gives their full 13 and 22.
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(13);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a2).toBe(22);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(6);
   });
 
-  it('plays singles off 100% even when the record says 90%', () => {
+  it('plays singles off 100% in full even when the record says 90%', () => {
     const outcome = computeMatch({
       match: match({ format: 'singles' }),
       sides: sides(['a1'], ['b1']),
@@ -980,11 +1035,10 @@ describe('the four fixed allowances ignore stored settings', () => {
       scores: [],
       settings: STALE,
     });
-    // 13 against 6 at 100%; at 90% it would be 12 against 5, so still 7 —
-    // check the raw course handicaps too so the numbers cannot coincide.
+    // 13 against 6 at 100% in full; at 90% they would be 12 and 5.
     expect(outcome.handicaps['side-a'].courseHandicaps.a1).toBe(13);
-    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(7);
-    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(0);
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.a1).toBe(13);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.b1).toBe(6);
   });
 
   it('ignores a per-match override on a fixed format too', () => {
@@ -993,7 +1047,7 @@ describe('the four fixed allowances ignore stored settings', () => {
       weights: [1, 1],
       rounding: 'nearest',
     } as never);
-    expect(overridden.teamHandicaps['side-a']).toBe(17);
+    expect(overridden.teamHandicaps['side-a']).toBe(13);
   });
 
   it('still honours the setting for a format with no fixed rule', () => {
@@ -1016,5 +1070,237 @@ describe('the four fixed allowances ignore stored settings', () => {
     for (const [format, fixed] of Object.entries(FIXED_ALLOWANCES)) {
       expect(DEFAULT_TOUR_SETTINGS.allowances[format as Match['format']]).toEqual(fixed);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A burned half: Day 3's rule
+// ---------------------------------------------------------------------------
+
+describe('a halved match that awards nothing', () => {
+  // Identical handicaps both sides, so a genuine halve is reachable.
+  const players = [
+    player('a1', 'team-a', 10),
+    player('a2', 'team-a', 10),
+    player('b1', 'team-b', 10),
+    player('b2', 'team-b', 10),
+  ];
+
+  /** Level scores over a six-hole block: every hole halved. */
+  function levelScores(from: number, to: number): Score[] {
+    const out: Score[] = [];
+    for (let hole = from; hole <= to; hole++) {
+      for (const side of ['side-a', 'side-b']) {
+        for (const p of side === 'side-a' ? ['a1', 'a2'] : ['b1', 'b2']) {
+          out.push(score(side, hole, 4, p));
+        }
+      }
+    }
+    return out;
+  }
+
+  const run = (halveAwardsNothing: boolean) =>
+    computeMatch({
+      match: match({ format: 'better_ball', startHole: 13, endHole: 18, pointsValue: 0.5 }),
+      sides: sides(['a1', 'a2'], ['b1', 'b2']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: levelScores(13, 18),
+      settings: DEFAULT_TOUR_SETTINGS,
+      halveAwardsNothing,
+    });
+
+  it('normally splits the half between the two sides', () => {
+    const outcome = run(false);
+    expect(outcome.finalStatus).toBe('Halved');
+    expect(outcome.points).toEqual({ 'side-a': 0.25, 'side-b': 0.25 });
+  });
+
+  it('pays nobody when the round burns halves', () => {
+    const outcome = run(true);
+    expect(outcome.finalStatus).toBe('Halved');
+    expect(outcome.points).toEqual({ 'side-a': 0, 'side-b': 0 });
+  });
+
+  it('still counts its full stake, so the tour is not quietly shrunk', () => {
+    // The point is burned, not withdrawn. Reading the stake off the payout
+    // would drop the tour below 11 and drag the winning line down with it.
+    const burned = run(true);
+    expect(burned.pointsValue).toBe(0.5);
+
+    const sidesByMatch = new Map([['match-1', sides(['a1', 'a2'], ['b1', 'b2'])]]);
+    const standings = computeStandings([burned], sidesByMatch, ['team-a', 'team-b']);
+    expect(standings.pointsTotal).toBe(0.5);
+    expect(standings.byTeam['team-a'].points).toBe(0);
+    expect(standings.byTeam['team-b'].points).toBe(0);
+  });
+
+  it('leaves a WON match paying out in full either way', () => {
+    const won = computeMatch({
+      match: match({ format: 'better_ball', startHole: 13, endHole: 18, pointsValue: 0.5 }),
+      sides: sides(['a1', 'a2'], ['b1', 'b2']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [
+        ...levelScores(14, 18),
+        score('side-a', 13, 3, 'a1'),
+        score('side-a', 13, 3, 'a2'),
+        score('side-b', 13, 5, 'b1'),
+        score('side-b', 13, 5, 'b2'),
+      ],
+      settings: DEFAULT_TOUR_SETTINGS,
+      halveAwardsNothing: true,
+    });
+    expect(won.winnerSideId).toBe('side-a');
+    expect(won.points).toEqual({ 'side-a': 0.5, 'side-b': 0 });
+  });
+
+  it('keeps the stake live before anyone tees off', () => {
+    const fresh = computeMatch({
+      match: match({ format: 'better_ball', startHole: 13, endHole: 18, pointsValue: 0.5 }),
+      sides: sides(['a1', 'a2'], ['b1', 'b2']),
+      players,
+      holes: HOLES,
+      tee: TEE,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+      halveAwardsNothing: true,
+    });
+    const standings = computeStandings(
+      [fresh],
+      new Map([['match-1', sides(['a1', 'a2'], ['b1', 'b2'])]]),
+      ['team-a', 'team-b'],
+    );
+    // Still advertised as on offer, and still outstanding.
+    expect(standings.pointsTotal).toBe(0.5);
+    expect(standings.pointsRemaining).toBe(0.5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The captains' rule: nobody ever plays off zero
+// ---------------------------------------------------------------------------
+
+describe('every format plays off its handicap in full', () => {
+  // Slope 113 with CR equal to par makes Course Handicap == Handicap Index,
+  // so these are the captains' own numbers rather than converted ones.
+  const FLAT: Tee = { ...TEE, courseRating: 72, slopeRating: 113 };
+
+  it('better ball: course handicaps 4, 11, 15, 22 play as 4 / 11 / 15 / 22', () => {
+    const players = [
+      player('p4', 'team-a', 4),
+      player('p15', 'team-a', 15),
+      player('p11', 'team-b', 11),
+      player('p22', 'team-b', 22),
+    ];
+    const outcome = computeMatch({
+      match: match({ format: 'better_ball' }),
+      sides: sides(['p4', 'p15'], ['p11', 'p22']),
+      players,
+      holes: HOLES,
+      tee: FLAT,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+
+    const plays = (id: string) =>
+      Object.values(outcome.handicaps).find((h) => id in h.playerPlayingHandicaps)!
+        .playerPlayingHandicaps[id];
+
+    // NOT 0 / 7 / 11 / 18.
+    expect([plays('p4'), plays('p11'), plays('p15'), plays('p22')]).toEqual([4, 11, 15, 22]);
+
+    // And each receives that many strokes over the round.
+    for (const [id, expected] of [['p4', 4], ['p11', 11], ['p15', 15], ['p22', 22]] as const) {
+      expect(Object.values(outcome.playerStrokes[id]).reduce((a, b) => a + b, 0)).toBe(expected);
+    }
+  });
+
+  it('singles: 8 against 13 plays 8 against 13', () => {
+    const outcome = computeMatch({
+      match: match({ format: 'singles' }),
+      sides: sides(['p8'], ['p13']),
+      players: [player('p8', 'team-a', 8), player('p13', 'team-b', 13)],
+      holes: HOLES,
+      tee: FLAT,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+    // NOT 0 against 5.
+    expect(outcome.handicaps['side-a'].playerPlayingHandicaps.p8).toBe(8);
+    expect(outcome.handicaps['side-b'].playerPlayingHandicaps.p13).toBe(13);
+    expect(Object.values(outcome.playerStrokes.p8).reduce((a, b) => a + b, 0)).toBe(8);
+    expect(Object.values(outcome.playerStrokes.p13).reduce((a, b) => a + b, 0)).toBe(13);
+  });
+
+  it('does not reduce anyone just because a low handicapper is in the match', () => {
+    // A scratch player joining the match must not move anybody else's figure.
+    const withScratch = computeMatch({
+      match: match({ format: 'better_ball' }),
+      sides: sides(['p0', 'p15'], ['p11', 'p22']),
+      players: [
+        player('p0', 'team-a', 0),
+        player('p15', 'team-a', 15),
+        player('p11', 'team-b', 11),
+        player('p22', 'team-b', 22),
+      ],
+      holes: HOLES,
+      tee: FLAT,
+      scores: [],
+      settings: DEFAULT_TOUR_SETTINGS,
+    });
+    expect(withScratch.handicaps['side-a'].playerPlayingHandicaps.p15).toBe(15);
+    expect(withScratch.handicaps['side-b'].playerPlayingHandicaps.p11).toBe(11);
+    expect(withScratch.handicaps['side-b'].playerPlayingHandicaps.p22).toBe(22);
+    // The scratch player is on zero because their handicap IS zero, not
+    // because they were reduced to it.
+    expect(withScratch.handicaps['side-a'].courseHandicaps.p0).toBe(0);
+  });
+
+  it('scramble and shamble pairs also keep their own, unchanged', () => {
+    for (const format of ['two_man_scramble', 'shamble'] as const) {
+      const outcome = computeMatch({
+        match: match({ format }),
+        sides: sides(['a1', 'a2'], ['b1', 'b2']),
+        players: [
+          player('a1', 'team-a', 14),
+          player('a2', 'team-a', 26),
+          player('b1', 'team-b', 12),
+          player('b2', 'team-b', 12),
+        ],
+        holes: HOLES,
+        tee: FLAT,
+        scores: [],
+        settings: DEFAULT_TOUR_SETTINGS,
+      });
+      // floor(floor(40/2) x 0.8) = 16 against floor(floor(24/2) x 0.8) = 9.
+      expect(outcome.teamHandicaps['side-a']).toBe(16);
+      expect(outcome.teamHandicaps['side-b']).toBe(9);
+      expect(outcome.handicaps['side-a'].playingHandicap).toBe(16);
+      expect(outcome.handicaps['side-b'].playingHandicap).toBe(9);
+    }
+  });
+
+  it('switching handicapMode to full changes nothing, because nothing subtracts', () => {
+    const run = (handicapMode: TourSettings['handicapMode']) =>
+      computeMatch({
+        match: match({ format: 'better_ball' }),
+        sides: sides(['p4', 'p15'], ['p11', 'p22']),
+        players: [
+          player('p4', 'team-a', 4),
+          player('p15', 'team-a', 15),
+          player('p11', 'team-b', 11),
+          player('p22', 'team-b', 22),
+        ],
+        holes: HOLES,
+        tee: FLAT,
+        scores: [],
+        settings: { ...DEFAULT_TOUR_SETTINGS, handicapMode },
+      });
+    expect(run('full').handicaps['side-a'].playerPlayingHandicaps).toEqual(
+      run('difference').handicaps['side-a'].playerPlayingHandicaps,
+    );
   });
 });

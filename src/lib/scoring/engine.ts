@@ -87,8 +87,9 @@ export interface MatchOutcome {
   /** Stroke allocation per player id keyed by hole number. */
   playerStrokes: Record<string, Record<number, number>>;
   /**
-   * The combined side handicap, before the match-play difference, for formats
-   * that play off one — floor((CH1 + CH2) / 2) for a scramble or shamble.
+   * The combined side handicap for formats that play off one —
+   * floor(floor((CH1 + CH2) / 2) x 0.8) for a scramble or shamble, kept in
+   * full because neither pair is reduced to the other.
    * Null for singles and better ball, where each player carries their own.
    */
   teamHandicaps: Record<string, number | null>;
@@ -110,6 +111,14 @@ export interface MatchOutcome {
   finalStatus: string;
   decidedOnHole: number | null;
 
+  /**
+   * What this match is worth to the tournament, win or lose.
+   *
+   * Kept separate from `points` because a burned half awards nothing while
+   * still having been worth something: Day 3 is advertised as 3 points and
+   * stays advertised as 3 even if every match halves.
+   */
+  pointsValue: number;
   /** Points actually earned. Zero for both sides until the match completes. */
   points: Record<string, number>;
   /**
@@ -136,10 +145,21 @@ export interface ComputeMatchInput {
   tee: Tee;
   scores: Score[];
   settings: TourSettings;
+  /**
+   * True when a halve on this match awards nothing to either side and the
+   * points are burned — Day 3's rule. The caller decides, because it is a
+   * property of the round rather than of the match; see `halvesAwardNothing`
+   * in `lib/rounds/matchups.ts`.
+   *
+   * The match's stake is unaffected: it still counts toward the tour total, it
+   * just goes unclaimed.
+   */
+  halveAwardsNothing?: boolean;
 }
 
 export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   const { match, sides, players, holes, tee, scores, settings } = input;
+  const halveAwardsNothing = input.halveAwardsNothing ?? false;
 
   const playerById = new Map(players.map((p) => [p.id, p]));
   const orderedSides = [...sides].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -360,7 +380,9 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   const halfRatio =
     settings.pointsPerWin > 0 ? settings.pointsPerHalf / settings.pointsPerWin : 0.5;
   const winPoints = match.pointsValue;
-  const halfPoints = match.pointsValue * halfRatio;
+  // A burned half pays nobody. The stake below is unchanged, so the point is
+  // still advertised as on offer — it simply goes unclaimed.
+  const halfPoints = halveAwardsNothing ? 0 : match.pointsValue * halfRatio;
 
   const points: Record<string, number> = Object.fromEntries(orderedSides.map((s) => [s.id, 0]));
   const projectedPoints: Record<string, number> = { ...points };
@@ -386,6 +408,7 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   return {
     matchId: match.id,
     format: match.format,
+    pointsValue: match.pointsValue,
     startHole: match.startHole,
     endHole: match.endHole,
     totalHoles,
@@ -454,11 +477,12 @@ export function computeStandings(
   for (const outcome of outcomes) {
     const sides = sidesByMatch.get(outcome.matchId) ?? [];
     const teamOf = new Map(sides.map((s) => [s.id, s.teamId]));
-    const matchPoints = Object.values(outcome.points).reduce((a, b) => a + b, 0);
-    const stake = Math.max(
-      matchPoints,
-      Object.values(outcome.projectedPoints).reduce((a, b) => a + b, 0),
-    );
+    // The stake is what the match was WORTH, not what it paid out. Deriving it
+    // from the points awarded used to be equivalent, but a burned Day 3 half
+    // pays nothing to anybody — and reading the stake off that would quietly
+    // shrink the tour from 11 points and drag the winning line down with it.
+    // The tour is advertised as 11 and stays 11; a burned half is unclaimed.
+    const stake = outcome.pointsValue;
     pointsTotal += stake;
     if (!outcome.isComplete) pointsRemaining += stake;
 
