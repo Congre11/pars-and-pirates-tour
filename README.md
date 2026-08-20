@@ -28,7 +28,7 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (213 tests) | `src/lib/**/*.test.ts` |
+| Test suite (221 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
@@ -47,7 +47,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 213 tests: scoring, points, formats, 4-balls, matchups
+npm test           # 221 tests: scoring, points, formats, 4-balls, matchups
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -133,12 +133,19 @@ Three details that matter on this tour:
   handicaps, round *down*, then take 80% and round down again. The two
   roundings are not interchangeable with one — course handicaps 13 and 12 give
   9 by the rule and 10 if folded into a single 40% stage.
-- **Neither pair plays off zero.** Match play normally subtracts the lower
-  side's handicap. Scramble and shamble do not: a pair on 16 against a pair on
-  9 plays 16 against 9, and **both** receive strokes. The totals match a 7-shot
-  difference, but the per-hole shape does not, because each side is dealt its
-  own strokes independently. That is intended. Better ball and singles still
-  put the lowest player in the match off zero.
+- **Nobody ever plays off zero.** Match play normally subtracts the lowest
+  handicap in the match. This tour does not, in any format:
+  - a scramble or shamble pair on 16 against a pair on 9 plays **16 against 9**,
+    not 7 against 0, and both receive strokes;
+  - better-ball course handicaps 4, 11, 15 and 22 play as **4 / 11 / 15 / 22**,
+    not 0 / 7 / 11 / 18;
+  - singles on 8 and 13 play **8 against 13**, not 0 against 5.
+
+  For the pair formats the totals still come to the same difference, but the
+  per-hole shape does not, because each side is dealt its own strokes
+  independently. That is intended. A consequence worth knowing: the
+  `handicapMode` setting is now inert — it can only reach the two formats this
+  tour never plays.
 - **Six-hole matches allocate over six holes.** Day 3's blocks deal each side's
   *whole* handicap across the holes actually being played, ranked by those
   holes' own stroke index — so a side on 16 over holes 1–6 receives all 16, not
@@ -164,8 +171,8 @@ that format, or per match in **Tour settings → Formats & pairings**):
 | --- | --- | --- |
 | 2-Man Scramble | `floor(floor((CH1 + CH2) / 2) × 0.8)` — **both** pairs keep their own | **fixed** |
 | Shamble | the same figure — one team handicap, both balls net against it | **fixed** |
-| Better Ball | 100% each, lowest player in the match off zero | **fixed** |
-| Singles | 100% each, lower player off zero | **fixed** |
+| Better Ball | 100% each, **in full** — 4, 11, 15, 22 play as 4 / 11 / 15 / 22 | **fixed** |
+| Singles | 100% each, **in full** — 8 against 13 plays 8 against 13 | **fixed** |
 | 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) — unused by this tour | editable |
 | Alternate Shot | 50% of combined | editable |
 

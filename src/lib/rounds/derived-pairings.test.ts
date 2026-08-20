@@ -270,7 +270,7 @@ describe('handicaps follow whoever is actually in the pairing', () => {
     expect(sideFor(shamble, ['Connor', 'Nick'])).toEqual(sideFor(scramble, ['Connor', 'Nick']));
   });
 
-  it('switches Better Ball to the four individual course handicaps', () => {
+  it('switches Better Ball to the four individual course handicaps, in full', () => {
     const outcomes = outcomesFor([
       ['Jason', 'Alan', 'Jordy', 'Connor'],
       ['Andrew', 'Ryan', 'Nick', 'Dan'],
@@ -282,19 +282,19 @@ describe('handicaps follow whoever is actually in the pairing', () => {
 
     const all = Object.values(bb.handicaps).flatMap((h) => Object.entries(h.courseHandicaps));
     expect(all).toHaveLength(4);
-    const lowest = Math.min(...all.map(([, v]) => v));
 
-    // Every player is on their own course handicap minus the lowest of the
-    // four — 100%, no allowance taken off.
+    // Every player is on their own course handicap, untouched — 100%, no
+    // allowance taken off and nobody reduced to the lowest of the four.
     for (const [playerId, courseHc] of all) {
       const side = Object.values(bb.handicaps).find((h) => playerId in h.playerPlayingHandicaps)!;
-      expect(side.playerPlayingHandicaps[playerId]).toBe(courseHc - lowest);
+      expect(side.playerPlayingHandicaps[playerId]).toBe(courseHc);
     }
+    // And so nobody is on zero.
     expect(
       Object.values(bb.handicaps)
         .flatMap((h) => Object.values(h.playerPlayingHandicaps))
-        .filter((v) => v === 0),
-    ).toHaveLength(all.filter(([, v]) => v === lowest).length);
+        .some((v) => v === 0),
+    ).toBe(false);
   });
 
   it('uses the same pairs for Better Ball as for the other two sections', () => {

@@ -149,11 +149,10 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
     // 4-man scramble: a widely used allowance is 20/15/10/5% low-to-high.
     // Unused by this tour's rounds but kept so the format stays selectable.
     team_scramble: { weights: [0.2, 0.15, 0.1, 0.05], rounding: 'nearest' },
-    // Better ball: 100% of each player's own course handicap. The lowest
-    // player in the match then plays off scratch and the rest take the
-    // difference, which is `handicapMode: 'difference'` below.
+    // Better ball and singles: 100% of each player's own course handicap,
+    // played in full. Nobody is reduced to the lowest player in the match —
+    // see ABSOLUTE_HANDICAP_FORMATS.
     better_ball: { weights: [1], rounding: 'nearest' },
-    // Singles: 100% each, lower player off scratch.
     singles: { weights: [1], rounding: 'nearest' },
     // Two-man scramble and shamble share one team handicap:
     //
@@ -185,8 +184,8 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
  *
  *   2-man scramble  floor(floor((CH1+CH2)/2) x 0.8)   one team handicap, played in full
  *   shamble         floor(floor((CH1+CH2)/2) x 0.8)   likewise — both balls net against it
- *   better ball     100% each                lowest player in the match off zero
- *   singles         100% each                lower player off zero
+ *   better ball     100% each, in full      nobody reduced to the lowest player
+ *   singles         100% each, in full      nobody plays off zero
  *
  * `team_scramble` and `foursomes` are NOT here. Neither is used by this tour's
  * rounds, so no rule has been agreed for them and they stay editable.
@@ -199,25 +198,36 @@ export const FIXED_ALLOWANCES: Partial<Record<MatchFormat, HandicapAllowance>> =
 };
 
 /**
- * Formats where each side plays off its OWN handicap in full.
+ * Formats where every side and every player plays off their OWN handicap in
+ * full. Nobody is ever reduced to zero, and nobody is reduced relative to
+ * anyone else.
  *
- * Match play normally subtracts the lower side's handicap so it plays off
- * scratch and only the difference is given away. The captains have agreed the
- * pair formats do not work that way: a team on 16 against a team on 9 plays
- * 16 against 9, not 7 against 0, and BOTH sides receive strokes.
+ * Match play normally subtracts the lowest handicap in the match so that side
+ * plays off scratch and only the difference is given away. The captains have
+ * agreed this tour does not work that way at all:
  *
- * The totals come to the same thing, but the per-hole shape does not, because
- * each side's strokes are dealt across the holes independently. That is
- * intended — over holes 1-6 a 16 gives 3,3,2,2,3,3 against a 9's 2,1,1,1,2,2,
- * which nets to +1,+2,+1,+1,+1,+1 rather than the 1,1,1,1,2,1 that allocating
- * the 7-shot difference directly would produce.
+ *   scramble / shamble  a pair on 16 against a pair on 9 plays 16 against 9,
+ *                       not 7 against 0, and both receive strokes
+ *   better ball         course handicaps 4, 11, 15 and 22 play as
+ *                       4 / 11 / 15 / 22, not 0 / 7 / 11 / 18
+ *   singles             8 against 13 plays 8 against 13, not 0 against 5
  *
- * Better ball and singles are NOT here: the lowest player in the match still
- * plays off zero.
+ * For the pair formats the totals still come to the same difference, but the
+ * per-hole shape does not, because each side's strokes are dealt across the
+ * holes independently. That is intended — over holes 1-6 a 16 gives
+ * 3,3,2,2,3,3 against a 9's 2,1,1,1,2,2, which nets to +1,+2,+1,+1,+1,+1
+ * rather than the 1,1,1,1,2,1 that allocating the 7-shot difference directly
+ * would produce.
+ *
+ * That is every format this tour actually plays, so `handicapMode` is now
+ * effectively inert: it can only still reach `team_scramble` and `foursomes`,
+ * neither of which is used.
  */
 export const ABSOLUTE_HANDICAP_FORMATS: ReadonlySet<MatchFormat> = new Set<MatchFormat>([
   'two_man_scramble',
   'shamble',
+  'better_ball',
+  'singles',
 ]);
 
 /** True when this format ignores the match-play difference and plays off its own. */
@@ -232,8 +242,9 @@ export const FIXED_ALLOWANCE_HELP: Partial<Record<MatchFormat, string>> = {
   shamble:
     'The pair play off one team handicap: floor(floor((CH1 + CH2) / 2) × 0.8). Each finishes their own ball, but both balls net against that same handicap. Both pairs keep their own.',
   better_ball:
-    '100% of each player’s own course handicap. The lowest player in the match plays off zero and the other three receive the difference.',
-  singles: '100% of each player’s own course handicap. The lower player plays off zero.',
+    '100% of each player’s own course handicap, in full. Course handicaps 4, 11, 15 and 22 play as 4 / 11 / 15 / 22 — nobody is reduced to the lowest player.',
+  singles:
+    '100% of each player’s own course handicap, in full. 8 against 13 plays 8 against 13, not 0 against 5.',
 };
 
 /** True when this format's allowance is a fixed rule rather than a setting. */

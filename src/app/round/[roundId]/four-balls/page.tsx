@@ -338,7 +338,7 @@ export default function FourBallsPage({ params }: { params: Promise<{ roundId: s
                 <span className="text-chalk-300">floor(floor((CH1 + CH2) / 2) × 0.8)</span>, used for
                 the Scramble and the Shamble. Both pairs keep their own — nobody plays off zero, so
                 both receive strokes. The Better Ball section uses the four individual course
-                handicaps instead, with the lowest of them off zero.
+                handicaps instead, each in full.
               </p>
             </>
           ) : (

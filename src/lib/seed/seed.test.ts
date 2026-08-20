@@ -534,29 +534,50 @@ describe('the captains’ revised handicap and points rules', () => {
     }
   });
 
-  it('leaves Day 3 Better Ball on individual handicaps with the lowest off zero', () => {
-    for (const match of matchesOn(3)) {
-      if (match.format !== 'better_ball') continue;
+  /** Every per-player format plays each player off their FULL course handicap. */
+  function expectFullIndividualHandicaps(dayNo: number) {
+    const r = round(dayNo);
+    const tee = snapshot.tees.find((t) => t.id === r.teeId)!;
+    for (const match of matchesOn(dayNo)) {
+      if (match.format !== 'better_ball' && match.format !== 'singles') continue;
       const o = outcome(match);
+      // Nobody carries a team handicap, and nobody is reduced to anyone else.
       expect(Object.values(o.teamHandicaps).every((v) => v === null)).toBe(true);
-      const all = Object.values(o.handicaps).flatMap((h) =>
-        Object.values(h.playerPlayingHandicaps),
-      );
-      expect(Math.min(...all)).toBe(0);
+      for (const side of snapshot.sides.filter((s) => s.matchId === match.id)) {
+        for (const id of side.playerIds) {
+          const ch = courseHandicap(
+            snapshot.players.find((p) => p.id === id)!.handicapIndex ?? 0,
+            tee,
+          );
+          expect(o.handicaps[side.id].playerPlayingHandicaps[id]).toBe(ch);
+        }
+      }
+    }
+  }
+
+  it('plays Day 3 Better Ball off full individual course handicaps', () => {
+    expectFullIndividualHandicaps(3);
+  });
+
+  it('plays Day 2 Better Ball and Day 4 Singles off full individual handicaps', () => {
+    for (const dayNo of [2, 4]) expectFullIndividualHandicaps(dayNo);
+  });
+
+  it('never puts anybody off zero on any day', () => {
+    // The rule the captains were most explicit about: 4, 11, 15 and 22 play as
+    // 4 / 11 / 15 / 22, and 8 against 13 plays 8 against 13.
+    for (const match of snapshot.matches) {
+      const o = outcome(match);
+      const all = [
+        ...Object.values(o.handicaps).flatMap((h) => Object.values(h.playerPlayingHandicaps)),
+        ...Object.values(o.teamHandicaps).filter((v): v is number => v !== null),
+      ];
+      expect(all.every((v) => v > 0)).toBe(true);
     }
   });
 
-  it('leaves Day 2 and Day 4 alone', () => {
-    for (const dayNo of [2, 4]) {
-      expect(halvesAwardNothing(matchesOn(dayNo))).toBe(false);
-      for (const match of matchesOn(dayNo)) {
-        const o = outcome(match);
-        const all = Object.values(o.handicaps).flatMap((h) =>
-          Object.values(h.playerPlayingHandicaps),
-        );
-        expect(Math.min(...all)).toBe(0);
-      }
-    }
+  it('leaves Day 2 and Day 4 splitting a halved match as usual', () => {
+    for (const dayNo of [2, 4]) expect(halvesAwardNothing(matchesOn(dayNo))).toBe(false);
   });
 
   it('burns a halved Day 3 match but keeps the tour advertised as 11 points', () => {

@@ -176,10 +176,14 @@ export interface SideHandicapResult {
 /**
  * Compute both sides' handicaps for a match.
  *
- * Better ball and singles take the match-play "difference": the lowest player
- * in the match plays off scratch and everyone else receives the gap to them.
- * Scramble and shamble do not — each pair keeps its own team handicap in full
- * and both sides receive strokes. See ABSOLUTE_HANDICAP_FORMATS.
+ * Every format this tour plays keeps its handicap IN FULL — see
+ * ABSOLUTE_HANDICAP_FORMATS. A scramble pair on 16 meets a pair on 9 as 16
+ * against 9; better-ball players on 4, 11, 15 and 22 play 4 / 11 / 15 / 22;
+ * singles on 8 and 13 play 8 against 13. Nobody plays off zero.
+ *
+ * The match-play "difference" is still implemented for the two formats that
+ * have no agreed rule (`team_scramble`, `foursomes`), so the engine remains
+ * correct for a round this tour does not happen to play.
  */
 export function computeMatchHandicaps(
   sides: SideHandicapInput[],
@@ -225,9 +229,22 @@ export function computeMatchHandicaps(
 
   if (!settings.handicapsEnabled) return raw;
 
-  // Scramble and shamble play off their own handicap in full: a pair on 16
-  // against a pair on 9 plays 16 against 9, and both receive strokes. Only the
-  // per-player formats still put the lowest in the match off zero.
+  // A per-player side's own figure is the LOWEST of its players, not the sum
+  // of them. Set here so it is meaningful whether or not a difference is
+  // applied below — `sidePlayingHandicap` adds a better-ball pair together,
+  // which is not a number that means anything on a scorecard.
+  if (isPerPlayerFormat(format)) {
+    for (const side of raw) {
+      const values = Object.values(side.playerPlayingHandicaps);
+      side.playingHandicap = values.length ? Math.min(...values) : 0;
+    }
+  }
+
+  // Every format this tour plays now keeps its own handicap in full — see
+  // ABSOLUTE_HANDICAP_FORMATS. Nobody is put off zero and nobody is reduced
+  // relative to the lowest player. What remains below can only reach
+  // `team_scramble` and `foursomes`, neither of which this tour uses; it is
+  // kept so the engine is still a correct match-play engine for other rounds.
   if (settings.handicapMode === 'difference' && !playsOffOwnHandicap(format)) {
     if (isPerPlayerFormat(format)) {
       // Everyone plays off the difference from the lowest player in the match.

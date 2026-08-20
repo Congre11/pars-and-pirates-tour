@@ -87,8 +87,9 @@ export interface MatchOutcome {
   /** Stroke allocation per player id keyed by hole number. */
   playerStrokes: Record<string, Record<number, number>>;
   /**
-   * The combined side handicap, before the match-play difference, for formats
-   * that play off one — floor((CH1 + CH2) / 2) for a scramble or shamble.
+   * The combined side handicap for formats that play off one —
+   * floor(floor((CH1 + CH2) / 2) x 0.8) for a scramble or shamble, kept in
+   * full because neither pair is reduced to the other.
    * Null for singles and better ball, where each player carries their own.
    */
   teamHandicaps: Record<string, number | null>;

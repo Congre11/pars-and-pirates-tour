@@ -12,13 +12,6 @@ import { courseHandicapLabel, handicapLabel } from '@/lib/format';
 import { ordinal } from '@/lib/tour-helpers';
 
 /**
- * The live scorecard. This is the screen the app exists for.
- *
- * Layout, top to bottom: who is playing and the live status, a hole strip to
- * move between holes, the big score buttons for the current hole, then the
- * full card. Everything updates live from the shared store.
- */
-/**
  * The allowance in a few words, for the strip under the scorecard header.
  *
  * A two-stage rule cannot be summed up by its first weight: the pair formats
@@ -32,6 +25,13 @@ function describeAllowance(allowance: HandicapAllowance): string {
   return `${Math.round((allowance.weights[0] ?? 1) * 100)}% allowance`;
 }
 
+/**
+ * The live scorecard. This is the screen the app exists for.
+ *
+ * Layout, top to bottom: who is playing and the live status, a hole strip to
+ * move between holes, the big score buttons for the current hole, then the
+ * full card. Everything updates live from the shared store.
+ */
 export default function MatchPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = use(params);
   const {

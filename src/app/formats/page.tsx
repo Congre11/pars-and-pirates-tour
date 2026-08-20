@@ -16,12 +16,12 @@ const RULES: Record<MatchFormat, { how: string; strokes: string }> = {
   better_ball: {
     how: 'Two-a-side, everyone plays their own ball. On each hole, the lower net score in each pair is that pair’s score. Lower pair score wins the hole.',
     strokes:
-      'Each player gets their own strokes off their course handicap, allocated by stroke index. The lowest player in the match plays off scratch.',
+      'Each player gets their own strokes off their full course handicap, allocated by stroke index. Nobody plays off scratch — course handicaps 4, 11, 15 and 22 play as 4 / 11 / 15 / 22.',
   },
   singles: {
     how: 'Head to head, own ball. Each hole is won, lost or halved on net score.',
     strokes:
-      'The higher handicapper receives the difference between the two course handicaps, allocated by stroke index.',
+      'Each player gets their own strokes off their full course handicap, allocated by stroke index. 8 against 13 plays 8 against 13, not 0 against 5.',
   },
   two_man_scramble: {
     how: 'Both players hit, pick the better shot, both play again from there until holed. One score per pair per hole.',
@@ -140,7 +140,7 @@ export default function FormatsPage() {
         </Row>
         <Row label="Match play style">
           {settings.handicapMode === 'difference'
-            ? 'Better Ball and Singles: the lowest player in the match plays off scratch. Scramble and Shamble: each pair plays off its own team handicap in full.'
+            ? 'Every format this tour plays uses its handicap in full — nobody plays off scratch. This setting only reaches 4-Man Scramble and Alternate Shot, neither of which is played.'
             : 'Full allowance for every side'}
         </Row>
         <Row label="Course handicap">Index × (Slope ÷ 113) + (Course Rating − Par)</Row>

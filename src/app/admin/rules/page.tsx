@@ -82,7 +82,7 @@ export default function AdminRulesPage() {
               { value: 'difference', label: 'Difference — lowest plays off scratch (standard)' },
               { value: 'full', label: 'Full allowance for both sides' },
             ]}
-            hint="Applies to Better Ball and Singles. Scramble and Shamble always play off their own team handicap in full, by tournament rule, whichever is set here."
+            hint="Has no effect on this tour. Every format played — Scramble, Shamble, Better Ball and Singles — uses its handicap in full by tournament rule, whichever is set here."
             onSave={(value) => patch({ handicapMode: value })}
           />
         </div>
@@ -161,8 +161,8 @@ export default function AdminRulesPage() {
       </div>
 
       <p className="pb-2 text-center text-xs text-chalk-500">
-        Course handicap = Index × (Slope ÷ 113) + (Course Rating − Par), then the allowance above,
-        then the match-play difference.
+        Course handicap = Index × (Slope ÷ 113) + (Course Rating − Par), then the format allowance.
+        Nothing is subtracted after that: every side plays off its own.
       </p>
     </AdminShell>
   );
