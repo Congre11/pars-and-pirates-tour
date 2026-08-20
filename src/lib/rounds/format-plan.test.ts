@@ -187,7 +187,11 @@ describe('planRound', () => {
       settings,
     });
     expect(plan.segments[0].hasOwnAllowance).toBe(false);
-    expect(plan.segments[0].allowance).toEqual({ weights: [0.5, 0.5], rounding: 'floor' });
+    expect(plan.segments[0].allowance).toEqual({
+      weights: [0.5, 0.5],
+      rounding: 'floor',
+      then: { factor: 0.8, rounding: 'floor' },
+    });
   });
 });
 

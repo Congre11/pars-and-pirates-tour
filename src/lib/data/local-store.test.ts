@@ -86,6 +86,7 @@ describe('demo-mode seed migration', () => {
     expect(snapshot.tour.settings.allowances.two_man_scramble).toEqual({
       weights: [0.5, 0.5],
       rounding: 'floor',
+      then: { factor: 0.8, rounding: 'floor' },
     });
     expect(snapshot.matches).toHaveLength(buildSeedSnapshot().matches.length);
   });

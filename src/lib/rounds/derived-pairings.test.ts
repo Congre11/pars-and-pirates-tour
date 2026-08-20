@@ -223,9 +223,11 @@ describe('handicaps follow whoever is actually in the pairing', () => {
     ]);
     const scramble = first(outcomes, 'two_man_scramble');
 
-    // floor((14 + 26) / 2) = 20 against floor((12 + 12) / 2) = 12.
-    expect(sideFor(scramble, ['Jason', 'Alan'])).toEqual({ team: 20, plays: 8 });
-    expect(sideFor(scramble, ['Jordy', 'Connor'])).toEqual({ team: 12, plays: 0 });
+    // floor(floor((14 + 26) / 2) x 0.8) = floor(20 x 0.8) = 16.
+    // floor(floor((12 + 12) / 2) x 0.8) = floor(12 x 0.8) =  9.
+    // Both pairs keep their own: 16 against 9, not 7 against 0.
+    expect(sideFor(scramble, ['Jason', 'Alan'])).toEqual({ team: 16, plays: 16 });
+    expect(sideFor(scramble, ['Jordy', 'Connor'])).toEqual({ team: 9, plays: 9 });
   });
 
   it('gives the Shamble the same team handicaps as the Scramble', () => {
@@ -237,8 +239,8 @@ describe('handicaps follow whoever is actually in the pairing', () => {
     const shamble = first(outcomes, 'shamble');
 
     // Same players, same course handicaps, therefore the same team handicap.
-    expect(sideFor(shamble, ['Jason', 'Alan'])).toEqual({ team: 20, plays: 8 });
-    expect(sideFor(shamble, ['Jordy', 'Connor'])).toEqual({ team: 12, plays: 0 });
+    expect(sideFor(shamble, ['Jason', 'Alan'])).toEqual({ team: 16, plays: 16 });
+    expect(sideFor(shamble, ['Jordy', 'Connor'])).toEqual({ team: 9, plays: 9 });
     expect(sideFor(shamble, ['Jason', 'Alan'])).toEqual(sideFor(scramble, ['Jason', 'Alan']));
     expect(sideFor(shamble, ['Jordy', 'Connor'])).toEqual(sideFor(scramble, ['Jordy', 'Connor']));
   });
@@ -252,18 +254,16 @@ describe('handicaps follow whoever is actually in the pairing', () => {
     const scramble = first(outcomes, 'two_man_scramble');
     const shamble = first(outcomes, 'shamble');
 
-    const pars = Math.floor((ch('Jason') + ch('Ryan')) / 2);
-    const pirates = Math.floor((ch('Connor') + ch('Nick')) / 2);
+    const pairRule = (a: number, b: number) => Math.floor(Math.floor((a + b) / 2) * 0.8);
+    const pars = pairRule(ch('Jason'), ch('Ryan'));
+    const pirates = pairRule(ch('Connor'), ch('Nick'));
 
     expect(sideFor(scramble, ['Jason', 'Ryan']).team).toBe(pars);
     expect(sideFor(scramble, ['Connor', 'Nick']).team).toBe(pirates);
 
-    // Lower plays zero, higher takes the difference — whichever way round.
-    expect(
-      [sideFor(scramble, ['Jason', 'Ryan']).plays, sideFor(scramble, ['Connor', 'Nick']).plays].sort(
-        (a, b) => a - b,
-      ),
-    ).toEqual([0, Math.abs(pars - pirates)]);
+    // Both keep their own — neither side is dragged to zero.
+    expect(sideFor(scramble, ['Jason', 'Ryan']).plays).toBe(pars);
+    expect(sideFor(scramble, ['Connor', 'Nick']).plays).toBe(pirates);
 
     // The shamble is identical, because the players have not changed.
     expect(sideFor(shamble, ['Jason', 'Ryan'])).toEqual(sideFor(scramble, ['Jason', 'Ryan']));

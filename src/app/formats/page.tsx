@@ -25,12 +25,13 @@ const RULES: Record<MatchFormat, { how: string; strokes: string }> = {
   },
   two_man_scramble: {
     how: 'Both players hit, pick the better shot, both play again from there until holed. One score per pair per hole.',
-    strokes: 'A combined allowance off both course handicaps, taken as a difference between pairs.',
+    strokes:
+      'One team handicap for the pair: floor(floor((CH1 + CH2) / 2) × 0.8). Both pairs keep their own and both receive strokes — nobody plays off scratch.',
   },
   shamble: {
     how: 'Both players tee off and the pair takes the better drive. From there each player plays their OWN ball to the hole. The lower net of the two counts for the pair.',
     strokes:
-      'Each player gets their own strokes off their course handicap, as in better ball, because each finishes their own ball.',
+      'One team handicap for the pair, exactly as in the Scramble: floor(floor((CH1 + CH2) / 2) × 0.8). Two balls are recorded, but both net against that same figure.',
   },
   foursomes: {
     how: 'One ball per pair, alternating shots. One player tees off the odd holes, the other the even holes, and you alternate all the way to the hole.',
@@ -93,10 +94,15 @@ export default function FormatsPage() {
           );
         })}
       </div>
-      <p className="text-xs text-chalk-500">
-        Day 1 is a single team match, so it is worth one point while Day 3 is worth eight. If the
-        captains want the days weighted differently, every match’s point value is editable in Admin
-        → Pairings.
+      <p className="text-xs leading-snug text-chalk-500">
+        Eleven points in all, and six wins the tour. Day 3 is six short matches worth half a point
+        each, so it carries three.
+      </p>
+      <p className="rounded-xl border border-brass-500/30 bg-brass-500/10 px-3 py-2.5 text-xs leading-snug text-brass-300">
+        <span className="font-semibold">Day 3 halves are burned.</span> A halved match on Day 3
+        awards nothing to either side — win 0.5, lose 0, halve 0 each. The tour is still played for
+        eleven points with six to win, so a burned half simply goes unclaimed. Every other day
+        splits a halved match as usual.
       </p>
 
       {/* --- The formats ------------------------------------------------------ */}
@@ -110,9 +116,13 @@ export default function FormatsPage() {
               <div className="flex items-center justify-between gap-2">
                 <h3 className="display text-base font-bold">{FORMAT_LABELS[format]}</h3>
                 <span className="chip bg-white/8 text-chalk-400">
-                  {allowance.weights.length === 1
-                    ? `${Math.round(allowance.weights[0] * 100)}%`
-                    : allowance.weights.map((w) => `${Math.round(w * 100)}%`).join(' / ')}
+                  {allowance.then
+                    ? // A two-stage rule: showing only the weights would claim
+                      // 50 / 50 for a figure that is really 80% of the average.
+                      `avg × ${Math.round(allowance.then.factor * 100)}%`
+                    : allowance.weights.length === 1
+                      ? `${Math.round(allowance.weights[0] * 100)}%`
+                      : allowance.weights.map((w) => `${Math.round(w * 100)}%`).join(' / ')}
                 </span>
               </div>
               <p className="mt-1.5 text-sm leading-snug text-chalk-200">{RULES[format].how}</p>
@@ -130,8 +140,8 @@ export default function FormatsPage() {
         </Row>
         <Row label="Match play style">
           {settings.handicapMode === 'difference'
-            ? 'Difference — the lower side plays off scratch'
-            : 'Full allowance for both sides'}
+            ? 'Better Ball and Singles: the lowest player in the match plays off scratch. Scramble and Shamble: each pair plays off its own team handicap in full.'
+            : 'Full allowance for every side'}
         </Row>
         <Row label="Course handicap">Index × (Slope ÷ 113) + (Course Rating − Par)</Row>
         <Row label="Completed holes">

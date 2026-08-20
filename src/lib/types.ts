@@ -90,8 +90,8 @@ export interface HandicapAllowance {
   /**
    * Percentage applied to each player's course handicap, ordered from the
    * LOWEST course handicap to the highest. e.g. `[0.5, 0.5]` rounded down is
-   * this tour's pair allowance — floor((CH1 + CH2) / 2) for a scramble or a
-   * shamble.
+   * this tour's pair allowance — the first stage of
+   * floor(floor((CH1 + CH2) / 2) x 0.8) for a scramble or a shamble.
    *
    * For per-player formats (singles, better ball) the first entry applies to
    * every player individually; this tour uses 100% for both.
@@ -99,6 +99,22 @@ export interface HandicapAllowance {
   weights: number[];
   /** Rounding applied to the resulting playing handicap. */
   rounding: 'nearest' | 'floor' | 'ceil';
+  /**
+   * An optional SECOND stage, applied to the already-rounded result.
+   *
+   * The scramble and shamble rule is two-stage on purpose:
+   *
+   *     floor(floor((CH1 + CH2) / 2) x 0.8)
+   *
+   * and that genuinely cannot be folded into one. Weights of 0.4 / 0.4 with
+   * one `floor` agrees on every even sum and disagrees on every odd one —
+   * course handicaps 13 and 12 give 9 by the rule and 10 by the single stage.
+   * The average is rounded down first, and only then is 80% taken.
+   */
+  then?: {
+    factor: number;
+    rounding: 'nearest' | 'floor' | 'ceil';
+  };
 }
 
 /**
@@ -141,12 +157,12 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
     singles: { weights: [1], rounding: 'nearest' },
     // Two-man scramble and shamble share one team handicap:
     //
-    //     floor((CH1 + CH2) / 2)
+    //     floor(floor((CH1 + CH2) / 2) x 0.8)
     //
-    // which is what a 50/50 split with `floor` rounding computes. The lower
-    // team then plays off scratch and the other receives the difference.
-    two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
-    shamble: { weights: [0.5, 0.5], rounding: 'floor' },
+    // a 50/50 split rounded down, then 80% of that rounded down again. Both
+    // teams keep their own — see ABSOLUTE_HANDICAP_FORMATS.
+    two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
+    shamble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
     // WHS foursomes match play allowance is 50% of combined course handicaps.
     foursomes: { weights: [0.5, 0.5], rounding: 'nearest' },
   },
@@ -167,8 +183,8 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
  * regardless of any per-match `allowanceOverride` — an override is persisted
  * data too, and carries exactly the same risk.
  *
- *   2-man scramble  floor((CH1 + CH2) / 2)   one team handicap for the pair
- *   shamble         floor((CH1 + CH2) / 2)   likewise — both balls net against it
+ *   2-man scramble  floor(floor((CH1+CH2)/2) x 0.8)   one team handicap, played in full
+ *   shamble         floor(floor((CH1+CH2)/2) x 0.8)   likewise — both balls net against it
  *   better ball     100% each                lowest player in the match off zero
  *   singles         100% each                lower player off zero
  *
@@ -176,18 +192,45 @@ export const DEFAULT_TOUR_SETTINGS: TourSettings = {
  * rounds, so no rule has been agreed for them and they stay editable.
  */
 export const FIXED_ALLOWANCES: Partial<Record<MatchFormat, HandicapAllowance>> = {
-  two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor' },
-  shamble: { weights: [0.5, 0.5], rounding: 'floor' },
+  two_man_scramble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
+  shamble: { weights: [0.5, 0.5], rounding: 'floor', then: { factor: 0.8, rounding: 'floor' } },
   better_ball: { weights: [1], rounding: 'nearest' },
   singles: { weights: [1], rounding: 'nearest' },
 };
 
+/**
+ * Formats where each side plays off its OWN handicap in full.
+ *
+ * Match play normally subtracts the lower side's handicap so it plays off
+ * scratch and only the difference is given away. The captains have agreed the
+ * pair formats do not work that way: a team on 16 against a team on 9 plays
+ * 16 against 9, not 7 against 0, and BOTH sides receive strokes.
+ *
+ * The totals come to the same thing, but the per-hole shape does not, because
+ * each side's strokes are dealt across the holes independently. That is
+ * intended — over holes 1-6 a 16 gives 3,3,2,2,3,3 against a 9's 2,1,1,1,2,2,
+ * which nets to +1,+2,+1,+1,+1,+1 rather than the 1,1,1,1,2,1 that allocating
+ * the 7-shot difference directly would produce.
+ *
+ * Better ball and singles are NOT here: the lowest player in the match still
+ * plays off zero.
+ */
+export const ABSOLUTE_HANDICAP_FORMATS: ReadonlySet<MatchFormat> = new Set<MatchFormat>([
+  'two_man_scramble',
+  'shamble',
+]);
+
+/** True when this format ignores the match-play difference and plays off its own. */
+export function playsOffOwnHandicap(format: MatchFormat): boolean {
+  return ABSOLUTE_HANDICAP_FORMATS.has(format);
+}
+
 /** How each fixed rule reads in plain words, for the screens that show it. */
 export const FIXED_ALLOWANCE_HELP: Partial<Record<MatchFormat, string>> = {
   two_man_scramble:
-    'The pair play off one team handicap: floor((CH1 + CH2) / 2). The lower pair play off zero and the higher receive the difference.',
+    'The pair play off one team handicap: floor(floor((CH1 + CH2) / 2) × 0.8). Both pairs keep their own — nobody plays off zero, and both receive strokes.',
   shamble:
-    'The pair play off one team handicap: floor((CH1 + CH2) / 2). Each finishes their own ball, but both balls net against that same handicap.',
+    'The pair play off one team handicap: floor(floor((CH1 + CH2) / 2) × 0.8). Each finishes their own ball, but both balls net against that same handicap. Both pairs keep their own.',
   better_ball:
     '100% of each player’s own course handicap. The lowest player in the match plays off zero and the other three receive the difference.',
   singles: '100% of each player’s own course handicap. The lower player plays off zero.',

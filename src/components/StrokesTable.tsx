@@ -148,8 +148,8 @@ export function StrokesTable({ round }: { round: Round }) {
  * Two shapes, because the formats genuinely differ:
  *
  *   scramble / shamble — the pair play off ONE combined handicap,
- *                        floor((CH1 + CH2) / 2), and the lower pair play off
- *                        zero while the higher receive the difference.
+ *                        floor(floor((CH1 + CH2) / 2) x 0.8), and BOTH pairs
+ *                        keep their own, so both receive strokes.
  *   better ball / singles — every player carries their own 100% course
  *                        handicap, and the lowest player IN THAT MATCH plays
  *                        off zero while the rest receive the difference.
@@ -168,7 +168,8 @@ export function MatchHandicaps({ round }: { round: Round }) {
       <div className="border-b border-white/8 px-3.5 py-2.5">
         <div className="label">Playing handicaps</div>
         <p className="mt-0.5 text-xs text-chalk-500">
-          After the format allowance and the match-play difference. The lower side plays off zero.
+          Scramble and Shamble pairs each play off their own team handicap, so both receive
+          strokes. Better Ball and Singles put the lowest player in the match off zero.
         </p>
       </div>
 
@@ -219,7 +220,9 @@ export function MatchHandicaps({ round }: { round: Round }) {
                               courseHandicapLabel(handicaps?.playerPlayingHandicaps[id] ?? 0),
                             )
                             .join(' / ')
-                        : `Team ${courseHandicapLabel(teamHandicap ?? 0)} → plays ${courseHandicapLabel(plays)}`}
+                        : // A pair plays off its team handicap in full, so there is
+                          // one number, not a "before and after the difference" pair.
+                          `Team ${courseHandicapLabel(teamHandicap ?? plays)}`}
                     </span>
                   </div>
                 );

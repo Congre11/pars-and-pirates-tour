@@ -5,7 +5,7 @@
  * database, a browser or a golf course.
  */
 
-import { allowanceFor } from '@/lib/types';
+import { allowanceFor, playsOffOwnHandicap } from '@/lib/types';
 import type { HandicapAllowance, Hole, MatchFormat, Player, Tee, TourSettings } from '@/lib/types';
 
 function applyRounding(value: number, rounding: HandicapAllowance['rounding']): number {
@@ -59,14 +59,28 @@ export function sidePlayingHandicap(
     // Per-player allowance: apply the same percentage to everyone and sum.
     // With one player (singles) this is simply that player's allowance.
     const total = sorted.reduce((sum, ch) => sum + ch * weights[0], 0);
-    return applyRounding(total, allowance.rounding);
+    return secondStage(applyRounding(total, allowance.rounding), allowance);
   }
 
   const total = sorted.reduce((sum, ch, i) => {
     const weight = weights[i] ?? weights[weights.length - 1];
     return sum + ch * weight;
   }, 0);
-  return applyRounding(total, allowance.rounding);
+  return secondStage(applyRounding(total, allowance.rounding), allowance);
+}
+
+/**
+ * Apply an allowance's optional second stage to an already-rounded figure.
+ *
+ * The scramble and shamble rule rounds twice — the average down, then 80% of
+ * that down again — and the two roundings are not interchangeable with one.
+ * Verified safe against floating point for every integer average up to 60:
+ * `12 * 0.8` is `9.600000000000001` and still floors to 9, and no value in
+ * range lands just under a whole number.
+ */
+function secondStage(value: number, allowance: HandicapAllowance): number {
+  if (!allowance.then) return value;
+  return applyRounding(value * allowance.then.factor, allowance.then.rounding);
 }
 
 /**
@@ -160,8 +174,12 @@ export interface SideHandicapResult {
 }
 
 /**
- * Compute both sides' handicaps for a match, including the match-play
- * "difference" adjustment where the lower side plays off scratch.
+ * Compute both sides' handicaps for a match.
+ *
+ * Better ball and singles take the match-play "difference": the lowest player
+ * in the match plays off scratch and everyone else receives the gap to them.
+ * Scramble and shamble do not — each pair keeps its own team handicap in full
+ * and both sides receive strokes. See ABSOLUTE_HANDICAP_FORMATS.
  */
 export function computeMatchHandicaps(
   sides: SideHandicapInput[],
@@ -207,7 +225,10 @@ export function computeMatchHandicaps(
 
   if (!settings.handicapsEnabled) return raw;
 
-  if (settings.handicapMode === 'difference') {
+  // Scramble and shamble play off their own handicap in full: a pair on 16
+  // against a pair on 9 plays 16 against 9, and both receive strokes. Only the
+  // per-player formats still put the lowest in the match off zero.
+  if (settings.handicapMode === 'difference' && !playsOffOwnHandicap(format)) {
     if (isPerPlayerFormat(format)) {
       // Everyone plays off the difference from the lowest player in the match.
       const all = raw.flatMap((side) => Object.values(side.playerPlayingHandicaps));
@@ -237,7 +258,7 @@ export function isPerPlayerFormat(format: MatchFormat): boolean {
   //
   // A shamble is the interesting case: each player finishes their own ball, so
   // two scores are recorded, but the pair plays off a single team handicap of
-  // floor((CH1 + CH2) / 2). Both balls are therefore netted against the same
+  // floor(floor((CH1 + CH2) / 2) x 0.8). Both balls net against that same
   // side strokes — see `computeMatch`.
   return format === 'singles' || format === 'better_ball';
 }

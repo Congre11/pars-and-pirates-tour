@@ -28,7 +28,7 @@ multi-phone live scoring.
 | Area | Where |
 | --- | --- |
 | Scoring engine (all 6 formats, handicaps, match status, points) | `src/lib/scoring/` |
-| Test suite (195 tests) | `src/lib/**/*.test.ts` |
+| Test suite (213 tests) | `src/lib/**/*.test.ts` |
 | Database schema, RLS, realtime, `set_score` function | `supabase/migrations/` |
 | Round format plan + validation | `src/lib/rounds/format-plan.ts` |
 | 4-ball grouping + validation | `src/lib/rounds/four-balls.ts` |
@@ -47,7 +47,7 @@ multi-phone live scoring.
 ```bash
 npm run dev        # development server
 npm run build      # production build
-npm test           # 195 tests: scoring, points, formats, 4-balls, matchups
+npm test           # 213 tests: scoring, points, formats, 4-balls, matchups
 npm run lint       # eslint
 npm run typecheck  # tsc
 npm run seed:sql   # regenerate supabase/seed.sql from the TypeScript seed
@@ -96,10 +96,18 @@ tour; nothing here is needed to play.
 | 3 | 1 Sep | PGA Sultan | 13–18 | Better Ball | 2 | 0.5 | 1 |
 | 4 | 2 Sep | Montgomerie Maxx Royal | 1–18 | Singles Match Play | 4 | 1 | **4** |
 
-**11 points total; 6 wins the tour.** A halved match splits its value exactly —
-a 0.5-point match halved is 0.25 each. `src/lib/seed/seed.test.ts`
-locks the seeded structure so a stray edit to the seed fails the build rather
-than the scoreboard.
+**11 points total; 6 wins the tour.** A halved match normally splits its value
+exactly — a 1-point match halved is 0.5 each.
+
+**Day 3 is the exception.** A halved Day 3 match awards **nothing to either
+side** and its half point is burned. The tour stays advertised as 11 points
+with 6 to win: the point goes unclaimed rather than reducing what was on offer,
+so a team can take the trophy on fewer than 6, or nobody reaches it. The rule
+is keyed on the round's *shape* — more than one hole range — rather than on a
+day number, which is the same signature the derived pairings use.
+
+`src/lib/seed/seed.test.ts` locks the seeded structure and both rules, so a
+stray edit fails the build rather than the scoreboard.
 
 **This table is the seeded default, not a fixture.** Day 3's three-format shape
 is six ordinary match rows, exactly like every other day. In
@@ -118,15 +126,23 @@ Match strokes    = the difference, so the lower side plays off scratch
 Strokes per hole = allocated by stroke index, wrapping above 18
 ```
 
-Two details that matter on this tour:
+Three details that matter on this tour:
 
-- **Pairs play off one handicap.** A scramble or shamble pair play off
-  `floor((CH1 + CH2) / 2)`. The lower pair play off zero; the higher receive the
-  difference.
-- **Six-hole matches allocate over six holes.** Day 3's blocks give out the
-  *whole* stroke difference across the holes actually being played, ranked by
-  those holes' own stroke index — so a side owed 8 shots over holes 1–6
-  receives 8, not the two that happened to carry SI 1 and 2 on the full card.
+- **Pairs play off one handicap, rounded twice.** A scramble or shamble pair
+  play off `floor(floor((CH1 + CH2) / 2) × 0.8)`: average the two course
+  handicaps, round *down*, then take 80% and round down again. The two
+  roundings are not interchangeable with one — course handicaps 13 and 12 give
+  9 by the rule and 10 if folded into a single 40% stage.
+- **Neither pair plays off zero.** Match play normally subtracts the lower
+  side's handicap. Scramble and shamble do not: a pair on 16 against a pair on
+  9 plays 16 against 9, and **both** receive strokes. The totals match a 7-shot
+  difference, but the per-hole shape does not, because each side is dealt its
+  own strokes independently. That is intended. Better ball and singles still
+  put the lowest player in the match off zero.
+- **Six-hole matches allocate over six holes.** Day 3's blocks deal each side's
+  *whole* handicap across the holes actually being played, ranked by those
+  holes' own stroke index — so a side on 16 over holes 1–6 receives all 16, not
+  the few that happened to carry a low SI on the full card.
 
 Handicap indexes are supplied by the organiser and entered by hand (Tour
 settings → Players records who changed them and when):
@@ -146,8 +162,8 @@ that format, or per match in **Tour settings → Formats & pairings**):
 
 | Format | Allowance | |
 | --- | --- | --- |
-| 2-Man Scramble | `floor((CH1 + CH2) / 2)` for the pair | **fixed** |
-| Shamble | `floor((CH1 + CH2) / 2)` — one team handicap, both balls net against it | **fixed** |
+| 2-Man Scramble | `floor(floor((CH1 + CH2) / 2) × 0.8)` — **both** pairs keep their own | **fixed** |
+| Shamble | the same figure — one team handicap, both balls net against it | **fixed** |
 | Better Ball | 100% each, lowest player in the match off zero | **fixed** |
 | Singles | 100% each, lower player off zero | **fixed** |
 | 4-Man Scramble | 20 / 15 / 10 / 5% (low to high) — unused by this tour | editable |

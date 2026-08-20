@@ -23,6 +23,7 @@ import {
   type ReactNode,
 } from 'react';
 import { computeMatch, computeStandings, type MatchOutcome, type Standings } from '@/lib/scoring/engine';
+import { halvesAwardNothing } from '@/lib/rounds/matchups';
 import { LocalTourStore } from './local-store';
 import { SupabaseTourStore } from './supabase-store';
 import {
@@ -448,6 +449,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
           tee,
           scores: indexes.scoresByMatch.get(match.id) ?? [],
           settings: snapshot.tour.settings,
+          // A halve on a multi-section round (Day 3) pays nobody.
+          halveAwardsNothing: halvesAwardNothing(indexes.matchesByRound.get(match.roundId) ?? []),
         }),
       );
     }

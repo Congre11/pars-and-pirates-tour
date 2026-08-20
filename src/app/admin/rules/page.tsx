@@ -82,7 +82,7 @@ export default function AdminRulesPage() {
               { value: 'difference', label: 'Difference — lowest plays off scratch (standard)' },
               { value: 'full', label: 'Full allowance for both sides' },
             ]}
-            hint="Difference is how match play is normally played and is what most people expect."
+            hint="Applies to Better Ball and Singles. Scramble and Shamble always play off their own team handicap in full, by tournament rule, whichever is set here."
             onSave={(value) => patch({ handicapMode: value })}
           />
         </div>

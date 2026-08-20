@@ -13,7 +13,7 @@ begin;
 -- Captain references are set after players exist.
 set constraints all deferred;
 insert into tours (id, name, year, start_date, end_date, location, status, trophy_name, settings) values
-  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[1],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.5,0.5],"rounding":"floor"},"shamble":{"weights":[0.5,0.5],"rounding":"floor"},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
+  ('215244a1-d717-445b-8ddf-4dbd03d820a3', 'Pars & Pirates Tour', 2026, '2026-08-28', '2026-09-04', 'Belek, Turkey', 'upcoming', 'The Pars & Pirates Trophy', '{"pointsPerWin":1,"pointsPerHalf":0.5,"handicapMode":"difference","handicapsEnabled":true,"lockCompletedHoles":true,"allowances":{"team_scramble":{"weights":[0.2,0.15,0.1,0.05],"rounding":"nearest"},"better_ball":{"weights":[1],"rounding":"nearest"},"singles":{"weights":[1],"rounding":"nearest"},"two_man_scramble":{"weights":[0.5,0.5],"rounding":"floor","then":{"factor":0.8,"rounding":"floor"}},"shamble":{"weights":[0.5,0.5],"rounding":"floor","then":{"factor":0.8,"rounding":"floor"}},"foursomes":{"weights":[0.5,0.5],"rounding":"nearest"}}}'::jsonb)
 on conflict (id) do update set
   name = excluded.name,
   year = excluded.year,

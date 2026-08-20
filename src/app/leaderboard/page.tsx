@@ -124,9 +124,10 @@ export default function LeaderboardPage() {
           );
         })}
 
-      <p className="pt-2 text-center text-xs text-chalk-500">
+      <p className="pt-2 text-center text-xs leading-snug text-chalk-500">
         Match points: {fmtPoints(snapshot.tour.settings.pointsPerWin)} for a win,{' '}
-        {fmtPoints(snapshot.tour.settings.pointsPerHalf)} each for a half.{' '}
+        {fmtPoints(snapshot.tour.settings.pointsPerHalf)} each for a half — except on Day 3, where a
+        halved match awards nothing and the half point is burned.{' '}
         <Link href="/formats" className="text-fairway-300">
           Formats &amp; rules
         </Link>
