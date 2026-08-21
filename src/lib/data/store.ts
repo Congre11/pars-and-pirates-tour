@@ -64,6 +64,26 @@ export interface AdminPatches {
 export type AdminEntity = keyof AdminPatches;
 
 /**
+ * Which snapshot array each admin entity lives in.
+ *
+ * Shared by both stores so an edit lands in the same place whether it is
+ * applied to localStorage or to the in-memory copy of a Supabase load.
+ */
+export const ENTITY_TO_KEY: Record<AdminEntity, keyof TourSnapshot> = {
+  tour: 'tour',
+  teams: 'teams',
+  players: 'players',
+  courses: 'courses',
+  tees: 'tees',
+  holes: 'holes',
+  rounds: 'rounds',
+  matches: 'matches',
+  sides: 'sides',
+  itinerary: 'itinerary',
+  fines: 'fines',
+};
+
+/**
  * Saving the 4-balls for one round.
  *
  * Deliberately NOT part of `AdminPatches`: rearranging who walks with whom is
