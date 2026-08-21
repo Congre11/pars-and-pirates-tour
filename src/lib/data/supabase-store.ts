@@ -31,6 +31,7 @@ import {
   type RealtimeTable,
 } from './mappers';
 import {
+  ENTITY_TO_KEY,
   cloneSnapshot,
   removeById,
   upsertById,
@@ -335,6 +336,42 @@ export class SupabaseTourStore implements TourStore {
     }
   }
 
+  /**
+   * Fold an admin edit into the snapshot this device is holding.
+   *
+   * Realtime does not cover these. Only four tables are subscribed — scores,
+   * match_results, round_groups and match_sides — because subscribing to all
+   * fourteen cost real database work for rows that cannot move mid-round, and
+   * widening that list again is what caused the load incident. Everything
+   * else therefore arrives only on the next `load()`.
+   *
+   * Which meant an admin edit was written to Postgres and then invisible: a
+   * handicap saved from Tour settings left every course-handicap figure,
+   * strokes table and scorecard on the screen showing the old number until
+   * someone reloaded the page, with no error to explain it.
+   *
+   * So the change is applied here, the same way `applyScoreLocally` applies a
+   * score — the difference being that a score is applied optimistically before
+   * the write, while these are applied after the server has accepted it. An
+   * admin edit is not on the hot path, so there is nothing to gain by guessing
+   * ahead of the answer, and a failed write leaves the screen truthful.
+   */
+  private applyEntityLocally(entity: AdminEntity, id: string, patch: object): void {
+    const next = cloneSnapshot(this.snapshot);
+
+    if (entity === 'tour') {
+      next.tour = { ...next.tour, ...patch } as TourSnapshot['tour'];
+    } else {
+      const key = ENTITY_TO_KEY[entity] as Exclude<keyof TourSnapshot, 'tour'>;
+      const list = next[key] as Array<{ id: string }>;
+      (next[key] as Array<{ id: string }>) = list.map((row) =>
+        row.id === id ? { ...row, ...patch } : row,
+      );
+    }
+
+    this.emit(next);
+  }
+
   async update<K extends AdminEntity>(
     entity: K,
     id: string,
@@ -349,6 +386,7 @@ export class SupabaseTourStore implements TourStore {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error ?? 'Could not save the change');
     }
+    this.applyEntityLocally(entity, id, patch as object);
   }
 
   async insert<K extends AdminEntity>(
@@ -365,7 +403,21 @@ export class SupabaseTourStore implements TourStore {
       throw new Error(body.error ?? 'Could not create the row');
     }
     const body = await response.json();
-    return body.id as string;
+    const id = body.id as string;
+
+    // The id comes back from Postgres, so the new row is added with the same
+    // id the next `load()` will bring — no duplicate when the two meet.
+    if (id && entity !== 'tour') {
+      const next = cloneSnapshot(this.snapshot);
+      const key = ENTITY_TO_KEY[entity] as Exclude<keyof TourSnapshot, 'tour'>;
+      (next[key] as Array<{ id: string }>) = upsertById(next[key] as Array<{ id: string }>, {
+        ...(row as object),
+        id,
+      } as { id: string });
+      this.emit(next);
+    }
+
+    return id;
   }
 
   async remove(entity: AdminEntity, id: string): Promise<void> {
@@ -378,6 +430,13 @@ export class SupabaseTourStore implements TourStore {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error ?? 'Could not delete the row');
     }
+
+    // The tour row cannot be deleted; the route rejects it too.
+    if (entity === 'tour') return;
+    const next = cloneSnapshot(this.snapshot);
+    const key = ENTITY_TO_KEY[entity] as Exclude<keyof TourSnapshot, 'tour'>;
+    (next[key] as Array<{ id: string }>) = removeById(next[key] as Array<{ id: string }>, id);
+    this.emit(next);
   }
 
   async resetScores(): Promise<void> {

@@ -12,6 +12,7 @@
 
 import { SEED_VERSION, buildSeedSnapshot } from '@/lib/seed/tour';
 import {
+  ENTITY_TO_KEY,
   cloneSnapshot,
   removeById,
   upsertById,
@@ -30,21 +31,6 @@ const STORAGE_KEY = 'pars-pirates:tour:v1';
 /** What is written to storage: the tour, plus the seed version that built it. */
 type StoredSnapshot = TourSnapshot & { seedVersion?: number };
 const CHANNEL_NAME = 'pars-pirates:sync';
-
-/** Snapshot array keys, so `update`/`insert` can address them generically. */
-const ENTITY_TO_KEY: Record<AdminEntity, keyof TourSnapshot> = {
-  tour: 'tour',
-  teams: 'teams',
-  players: 'players',
-  courses: 'courses',
-  tees: 'tees',
-  holes: 'holes',
-  rounds: 'rounds',
-  matches: 'matches',
-  sides: 'sides',
-  itinerary: 'itinerary',
-  fines: 'fines',
-};
 
 function randomId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
