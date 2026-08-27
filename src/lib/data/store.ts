@@ -20,6 +20,7 @@ import type {
   MatchSide,
   Player,
   Round,
+  Score,
   Tee,
   Team,
   Tour,
@@ -158,6 +159,30 @@ export interface TourStore {
   remove(entity: AdminEntity, id: string): Promise<void>;
   /** Wipe every score in the tour. Admin-only, used to reset after a test run. */
   resetScores(): Promise<void>;
+}
+
+/**
+ * One ball, identified the way the database identifies it.
+ *
+ * Scores have a server-generated id, but the entry screen only ever knows the
+ * ball: which match, which hole, which side, which player (null for a shared
+ * ball). Every lookup that is not by id goes through here so they cannot
+ * quietly disagree.
+ */
+export type BallRef = Pick<Score, 'matchId' | 'holeNo' | 'sideId' | 'playerId'>;
+
+export function isSameBall(score: BallRef, ball: BallRef): boolean {
+  return (
+    score.matchId === ball.matchId &&
+    score.holeNo === ball.holeNo &&
+    score.sideId === ball.sideId &&
+    (score.playerId ?? null) === (ball.playerId ?? null)
+  );
+}
+
+/** The score entered for one ball, or undefined if the hole is still blank. */
+export function findBallScore(scores: readonly Score[], ball: BallRef): Score | undefined {
+  return scores.find((score) => isSameBall(score, ball));
 }
 
 export class ScoreConflictError extends Error {

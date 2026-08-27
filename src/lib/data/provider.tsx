@@ -26,14 +26,8 @@ import { computeMatch, computeStandings, type MatchOutcome, type Standings } fro
 import { halvesAwardNothing } from '@/lib/rounds/matchups';
 import { LocalTourStore } from './local-store';
 import { SupabaseTourStore } from './supabase-store';
-import {
-  dequeue,
-  enqueue,
-  markAttempt,
-  peekQueue,
-  queueKey,
-  type QueuedWrite,
-} from './offline-queue';
+import { dequeue, enqueue, peekQueue, queueKey } from './offline-queue';
+import { drainScoreQueue } from './flush';
 import {
   ScoreConflictError,
   type AdminEntity,
@@ -229,39 +223,49 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // --- Offline queue ------------------------------------------------------
+
+  /**
+   * Forget this device's optimistic row for a ball.
+   *
+   * Called when the server has refused the write. The row is known-wrong at
+   * that point, and leaving it in place would keep both the card and the next
+   * `expectedUpdatedAt` anchored to a score the database never accepted.
+   */
+  const discardPendingScore = useCallback(
+    (input: Pick<SetScoreInput, 'matchId' | 'holeNo' | 'sideId' | 'playerId'>) => {
+      if (store instanceof SupabaseTourStore) store.discardPendingScore(input);
+    },
+    [store],
+  );
+
+  /**
+   * Drain the durable queue.
+   *
+   * One cycle at a time, and one attempt per queued write per cycle — see
+   * `drainScoreQueue`, which owns the rules that keep a rejected write from
+   * turning into a retry storm.
+   */
   const flushQueue = useCallback(async () => {
     if (flushingRef.current) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     flushingRef.current = true;
     try {
-      let queue: QueuedWrite[] = peekQueue();
-      while (queue.length > 0) {
-        const item = queue[0];
-        try {
-          await store.setScore(item);
-          queue = dequeue(item.key);
-        } catch (err) {
-          if (err instanceof ScoreConflictError) {
-            // Someone else's entry won. Drop ours and surface it — the fresh
-            // value arrives over realtime, so the card stays truthful.
-            queue = dequeue(item.key);
-            setLastError(err.message);
-          } else {
-            queue = markAttempt(item.key);
-            const attempts = queue.find((q) => q.key === item.key)?.attempts ?? 0;
-            if (attempts >= 8) {
-              queue = dequeue(item.key);
-              setLastError('A score could not be saved after several attempts.');
-            }
-            break; // Stop; a later retry picks up where we left off.
-          }
-        }
-      }
-      setPendingWrites(queue.length);
+      const { remaining } = await drainScoreQueue({
+        send: (item) => store.setScore(item),
+        onConflict: (item, message) => {
+          // Someone else's entry won. The queued write is already gone; the
+          // optimistic row it drew goes with it, so the card and the next
+          // `expectedUpdatedAt` both fall back to what the database says.
+          discardPendingScore(item);
+          setLastError(message);
+        },
+        onGaveUp: () => setLastError('A score could not be saved after several attempts.'),
+      });
+      setPendingWrites(remaining);
     } finally {
       flushingRef.current = false;
     }
-  }, [store]);
+  }, [discardPendingScore, store]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -294,7 +298,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
           setPendingWrites(dequeue(queueKey(full)).length);
         } catch (err) {
           if (err instanceof ScoreConflictError) {
+            // Terminal: never retried. The hole moved under us, so this write
+            // is stale and the optimistic row it drew goes with it.
             setPendingWrites(dequeue(queueKey(full)).length);
+            discardPendingScore(full);
             setLastError(err.message);
           }
           // Anything else stays queued for the retry loop.
@@ -304,7 +311,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
       await store.setScore(full);
     },
-    [scorerName, store],
+    [discardPendingScore, scorerName, store],
   );
 
   const saveGroups = useCallback(

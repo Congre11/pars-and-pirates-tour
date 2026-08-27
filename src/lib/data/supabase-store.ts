@@ -35,8 +35,10 @@ import {
   cloneSnapshot,
   removeById,
   upsertById,
+  isSameBall,
   ScoreConflictError,
   type AdminEntity,
+  type BallRef,
   type AdminPatches,
   type SaveGroupsInput,
   type SaveMatchupsInput,
@@ -74,6 +76,23 @@ const EMPTY: TourSnapshot = {
   activity: [],
   fines: [],
 };
+
+/**
+ * The id given to a score that exists only on this device so far.
+ *
+ * A score is applied locally the instant it is tapped, before the server has
+ * given the row an id. That placeholder has to be recognisable, because the
+ * real row arrives over Realtime under a different (server-generated) id and
+ * the two must not be allowed to coexist — see `applyChange`.
+ */
+const PENDING_SCORE_PREFIX = 'pending-';
+
+function pendingScoreId(input: BallRef): string {
+  // The side is part of the key: in a shared-ball format both sides score with
+  // a null player id, so leaving it out would give the two teams' placeholders
+  // the same id on every hole.
+  return `${PENDING_SCORE_PREFIX}${input.matchId}-${input.holeNo}-${input.sideId}-${input.playerId ?? 'team'}`;
+}
 
 /**
  * The tables worth a live subscription.
@@ -225,7 +244,20 @@ export class SupabaseTourStore implements TourStore {
     const mapped = mapper(row);
     if (!mapped.id) return;
 
-    const list = next[key] as Array<{ id: string }>;
+    let list = next[key] as Array<{ id: string }>;
+
+    // The server's row for a ball supersedes this device's placeholder for it.
+    // They carry different ids, so an upsert alone would leave both in the
+    // snapshot: the real score AND a phantom holding this device's last tap.
+    // Anything reading the ball by (match, hole, side, player) rather than by
+    // id could then pick the phantom — including the `updatedAt` that the
+    // conflict check is built on.
+    if (table === 'scores') {
+      const ball = mapped as unknown as Score;
+      const phantomId = pendingScoreId(ball);
+      list = list.filter((existing) => existing.id !== phantomId);
+    }
+
     (next[key] as Array<{ id: string }>) =
       eventType === 'DELETE' ? removeById(list, mapped.id) : upsertById(list, mapped);
 
@@ -267,18 +299,14 @@ export class SupabaseTourStore implements TourStore {
   /** Optimistically apply a score locally so the UI responds instantly. */
   applyScoreLocally(input: SetScoreInput): void {
     const next = cloneSnapshot(this.snapshot);
-    const matches = (score: Score) =>
-      score.matchId === input.matchId &&
-      score.holeNo === input.holeNo &&
-      score.sideId === input.sideId &&
-      (score.playerId ?? null) === (input.playerId ?? null);
+    const matches = (score: Score) => isSameBall(score, input);
 
     if (input.gross === null && !input.pickedUp) {
       next.scores = next.scores.filter((s) => !matches(s));
     } else {
       const existing = next.scores.find(matches);
       const row: Score = {
-        id: existing?.id ?? `pending-${input.matchId}-${input.holeNo}-${input.playerId ?? 'team'}`,
+        id: existing?.id ?? pendingScoreId(input),
         matchId: input.matchId,
         holeNo: input.holeNo,
         sideId: input.sideId,
@@ -286,12 +314,33 @@ export class SupabaseTourStore implements TourStore {
         gross: input.gross,
         pickedUp: input.pickedUp,
         enteredBy: input.enteredBy,
-        updatedAt: new Date().toISOString(),
+        // Only the database stamps a score. Inventing a client time here would
+        // put this device's clock into the optimistic-concurrency check, so a
+        // phone running a few minutes fast or slow would conflict with itself.
+        // Carry the last known server time forward; null until there is one.
+        updatedAt: existing?.updatedAt ?? null,
       };
       next.scores = existing
         ? next.scores.map((s) => (matches(s) ? row : s))
         : [...next.scores, row];
     }
+    this.emit(next);
+  }
+
+  /**
+   * Drop this device's placeholder for a ball after the server has refused it.
+   *
+   * Used when a write loses a conflict: the optimistic row is now known to be
+   * wrong, and leaving it in place would keep the screen — and the next
+   * `expectedUpdatedAt` — anchored to a score the database never accepted.
+   * A row the server HAS accepted (a real id) is left alone; the correct
+   * version of it arrives over Realtime.
+   */
+  discardPendingScore(input: BallRef): void {
+    const phantomId = pendingScoreId(input);
+    if (!this.snapshot.scores.some((s) => s.id === phantomId)) return;
+    const next = cloneSnapshot(this.snapshot);
+    next.scores = next.scores.filter((s) => s.id !== phantomId);
     this.emit(next);
   }
 

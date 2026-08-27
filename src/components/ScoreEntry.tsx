@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTour } from '@/lib/data/provider';
+import { findBallScore } from '@/lib/data/store';
 import type { BallDetail, MatchOutcome } from '@/lib/scoring/engine';
 import type { Match, MatchSide } from '@/lib/types';
 import { isTeamBallFormat } from '@/lib/types';
@@ -111,13 +112,15 @@ export function ScoreEntry({
   }) {
     const [busy, setBusy] = useState(false);
     const player = ball.playerId ? playerById(ball.playerId) : null;
-    const existing = snapshot.scores.find(
-      (s) =>
-        s.matchId === match.id &&
-        s.holeNo === holeNo &&
-        s.sideId === side.id &&
-        (s.playerId ?? null) === (ball.playerId ?? null),
-    );
+    // The row the database holds for this ball. `updatedAt` is null while the
+    // score is still only on this device, and a null is exactly what the
+    // conflict check wants there — never a client-invented time.
+    const existing = findBallScore(snapshot.scores, {
+      matchId: match.id,
+      holeNo,
+      sideId: side.id,
+      playerId: ball.playerId,
+    });
 
     const write = async (gross: number | null, pickedUp: boolean) => {
       if (locked || busy) return;

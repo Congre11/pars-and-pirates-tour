@@ -73,7 +73,11 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    if (error.message?.includes('score_conflict')) {
+    // A lost optimistic-concurrency check. `set_score` raises it with SQLSTATE
+    // 40001, so match on the code as well as the message: the code is the part
+    // PostgREST is guaranteed to pass through unchanged, and a conflict that
+    // reaches the client as a plain 500 would be retried instead of dropped.
+    if (error.code === '40001' || error.message?.includes('score_conflict')) {
       return NextResponse.json(
         { error: 'Someone else updated this hole while you were typing. Their score is shown.' },
         { status: 409 },
