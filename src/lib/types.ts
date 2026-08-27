@@ -527,7 +527,14 @@ export interface Score {
   /** Ball picked up / hole conceded — counts as no score for this ball. */
   pickedUp: boolean;
   enteredBy: string;
-  updatedAt: string;
+  /**
+   * When the database last wrote this row.
+   *
+   * Null while the score exists only on the device that tapped it: the client
+   * never invents this value, because it is what the optimistic-concurrency
+   * check compares against and a phone's clock is not the database's.
+   */
+  updatedAt: string | null;
 }
 
 export interface MatchResult {

@@ -21,8 +21,10 @@ export default function AdminScoresPage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
+  // A score still queued on this device has no database time yet; sort those
+  // to the top, since they are the most recent thing that happened here.
   const recent = [...snapshot.scores]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .sort((a, b) => (b.updatedAt ?? '9999').localeCompare(a.updatedAt ?? '9999'))
     .slice(0, 60);
 
   const wipe = async () => {
@@ -75,7 +77,8 @@ export default function AdminScoresPage() {
                   </span>
                   <span className="block truncate text-xs text-chalk-500">
                     {round ? `Day ${round.dayNo} · ` : ''}
-                    {match?.name} · entered by {score.enteredBy} {relativeTime(score.updatedAt)}
+                    {match?.name} · entered by {score.enteredBy}{' '}
+                    {score.updatedAt ? relativeTime(score.updatedAt) : 'saving…'}
                   </span>
                 </span>
                 <span className="text-chalk-500" aria-hidden>
