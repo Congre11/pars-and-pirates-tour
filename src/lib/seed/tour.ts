@@ -589,6 +589,10 @@ export function buildSeedSnapshot(): TourSnapshot {
       formatLabel: seedRound.formatLabel,
       teeTime: seedRound.teeTime,
       status: 'upcoming',
+      // Every round starts on the formula. A round only becomes manual when
+      // an organiser deliberately switches it, which is why nothing here
+      // needs a seed bump: the default is the behaviour that already exists.
+      handicapSource: 'calculated',
       notes: seedRound.notes,
       sortOrder: roundIndex,
     });
@@ -673,6 +677,7 @@ export function buildSeedSnapshot(): TourSnapshot {
     sides,
     scores: [],
     results: [],
+    roundHandicaps: [],
     itinerary,
     activity: [],
     fines: [],

@@ -10,6 +10,7 @@ import { Avatar, EmptyState, PageHeader, Warning } from '@/components/ui';
 import { FORMAT_LABELS, FORMAT_SHORT_LABELS } from '@/lib/types';
 import { courseHandicapLabel } from '@/lib/format';
 import { ordinal } from '@/lib/tour-helpers';
+import { MANUAL_HANDICAPS_INCOMPLETE } from '@/lib/rounds/round-setup';
 
 /**
  * The round scorecard — what "Start Scoring" opens.
@@ -177,6 +178,14 @@ export default function RoundScorePage({ params }: { params: Promise<{ roundId: 
     activeHoleDetail?.complete === true &&
     activeHole <
       activeOutcome.holes.reduce((max, h) => (h.complete ? Math.max(max, h.holeNo) : max), 0);
+
+  // This round is on manual course handicaps and somebody has none entered.
+  // Scoring stops rather than quietly playing them off a number nobody chose —
+  // the whole reason manual handicaps exist.
+  const missingManual = (activeOutcome?.missingManualPlayerIds ?? [])
+    .map((id) => playerById(id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const handicapsBlocked = missingManual.length > 0;
 
   return (
     <div className="space-y-4 pb-6">
@@ -357,11 +366,17 @@ export default function RoundScorePage({ params }: { params: Promise<{ roundId: 
             </div>
           </Link>
 
+          {handicapsBlocked && (
+            <Warning href={`/admin/rounds/${roundId}/handicaps`}>
+              <strong>{MANUAL_HANDICAPS_INCOMPLETE}</strong> No manual course handicap for{' '}
+              {missingManual.join(', ')}. Enter it in Tour settings → Rounds → Course handicaps.
+            </Warning>
+          )}
           <ScoreEntry
             match={activeMatch}
             outcome={activeOutcome}
             holeNo={activeHole}
-            locked={Boolean(locked)}
+            locked={Boolean(locked) || handicapsBlocked}
             onScored={() => {
               if (!activeHoleDetail?.complete) setTimeout(() => setChosenHole(null), 500);
             }}

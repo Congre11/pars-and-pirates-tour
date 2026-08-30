@@ -22,7 +22,13 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { computeMatch, computeStandings, type MatchOutcome, type Standings } from '@/lib/scoring/engine';
+import {
+  applyManualResult,
+  computeMatch,
+  computeStandings,
+  type MatchOutcome,
+  type Standings,
+} from '@/lib/scoring/engine';
 import { halvesAwardNothing } from '@/lib/rounds/matchups';
 import { LocalTourStore } from './local-store';
 import { SupabaseTourStore } from './supabase-store';
@@ -34,6 +40,8 @@ import {
   type AdminPatches,
   type SaveGroupsInput,
   type SaveMatchupsInput,
+  type SetMatchResultInput,
+  type SetRoundHandicapsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -43,6 +51,7 @@ import type {
   Course,
   Hole,
   Match,
+  MatchResult,
   MatchSide,
   Player,
   Round,
@@ -72,6 +81,14 @@ export interface TourContextValue {
   saveGroups: (input: SaveGroupsInput) => Promise<void>;
   /** Save who is playing whom. Open to everyone; only touches side line-ups. */
   saveMatchups: (input: SaveMatchupsInput) => Promise<void>;
+  /** Manually entered course handicaps for a round, keyed by player id. */
+  roundHandicapsFor: (roundId: string) => Record<string, number>;
+  /** Save a round's manual course handicaps. */
+  setRoundHandicaps: (input: SetRoundHandicapsInput) => Promise<void>;
+  /** The organiser result for a match, if one has been declared. */
+  manualResultFor: (matchId: string) => MatchResult | undefined;
+  /** Declare (or clear) an organiser result. */
+  setMatchResult: (input: SetMatchResultInput) => Promise<void>;
   matchesForRound: (roundId: string) => Match[];
   sidesForMatch: (matchId: string) => MatchSide[];
   teesForCourse: (courseId: string) => Tee[];
@@ -141,6 +158,7 @@ function emptySnapshot(): TourSnapshot {
     sides: [],
     scores: [],
     results: [],
+    roundHandicaps: [],
     itinerary: [],
     activity: [],
     fines: [],
@@ -332,6 +350,24 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setRoundHandicaps = useCallback(
+    (input: SetRoundHandicapsInput) =>
+      store.setRoundHandicaps(input).catch((err: Error) => {
+        setLastError(err.message);
+        throw err;
+      }),
+    [store],
+  );
+
+  const setMatchResult = useCallback(
+    (input: SetMatchResultInput) =>
+      store.setMatchResult(input).catch((err: Error) => {
+        setLastError(err.message);
+        throw err;
+      }),
+    [store],
+  );
+
   const update = useCallback(
     <K extends AdminEntity>(entity: K, id: string, patch: AdminPatches[K]) =>
       store.update(entity, id, patch).catch((err: Error) => {
@@ -413,6 +449,20 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
     for (const list of sidesByMatch.values()) list.sort((a, b) => a.sortOrder - b.sortOrder);
 
+    // Manual course handicaps, grouped by round. Only ever consulted for a
+    // round that has been switched to manual, so a figure entered for one day
+    // cannot reach another.
+    const manualHandicapsByRound = new Map<string, Record<string, number>>();
+    for (const entry of snapshot.roundHandicaps) {
+      const forRound = manualHandicapsByRound.get(entry.roundId) ?? {};
+      forRound[entry.playerId] = entry.courseHandicap;
+      manualHandicapsByRound.set(entry.roundId, forRound);
+    }
+
+    // Organiser results. Nothing writes one automatically, so a row here means
+    // a person declared the winner of that match.
+    const manualResults = new Map(snapshot.results.map((r) => [r.matchId, r]));
+
     const scoresByMatch = new Map<string, typeof snapshot.scores>();
     for (const score of snapshot.scores) {
       const list = scoresByMatch.get(score.matchId) ?? [];
@@ -433,6 +483,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
       matchesByRound,
       sidesByMatch,
       scoresByMatch,
+      manualHandicapsByRound,
+      manualResults,
     };
   }, [snapshot]);
 
@@ -446,19 +498,45 @@ export function TourProvider({ children }: { children: ReactNode }) {
       const holes = indexes.holesByCourse.get(round.courseId) ?? [];
       if (!tee || holes.length === 0) continue;
 
+      const sides = indexes.sidesByMatch.get(match.id) ?? [];
+      // A halve on a multi-section round (Day 3) pays nobody.
+      const halveAwardsNothing = halvesAwardNothing(
+        indexes.matchesByRound.get(match.roundId) ?? [],
+      );
+
+      const outcome = computeMatch({
+        match,
+        sides,
+        players: snapshot.players,
+        holes,
+        tee,
+        scores: indexes.scoresByMatch.get(match.id) ?? [],
+        settings: snapshot.tour.settings,
+        halveAwardsNothing,
+        // Manual handicaps only when the round says so. A round left on
+        // 'calculated' — every round until an organiser changes one, Day 1
+        // included — takes exactly the path it takes today.
+        manualCourseHandicaps:
+          round.handicapSource === 'manual'
+            ? (indexes.manualHandicapsByRound.get(round.id) ?? {})
+            : null,
+      });
+
+      // An organiser's declared result is authoritative until they clear it.
+      // The hole detail underneath is left alone, so whatever was entered
+      // before the round went wrong is still on the scorecard.
+      const declared = indexes.manualResults.get(match.id);
       result.set(
         match.id,
-        computeMatch({
-          match,
-          sides: indexes.sidesByMatch.get(match.id) ?? [],
-          players: snapshot.players,
-          holes,
-          tee,
-          scores: indexes.scoresByMatch.get(match.id) ?? [],
-          settings: snapshot.tour.settings,
-          // A halve on a multi-section round (Day 3) pays nobody.
-          halveAwardsNothing: halvesAwardNothing(indexes.matchesByRound.get(match.roundId) ?? []),
-        }),
+        declared
+          ? applyManualResult(
+              outcome,
+              declared,
+              sides,
+              snapshot.tour.settings,
+              halveAwardsNothing,
+            )
+          : outcome,
       );
     }
     return result;
@@ -499,6 +577,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
       groupsForRound: (roundId) => indexes.groupsByRound.get(roundId) ?? [],
       saveGroups,
       saveMatchups,
+      roundHandicapsFor: (roundId) => indexes.manualHandicapsByRound.get(roundId) ?? {},
+      setRoundHandicaps,
+      manualResultFor: (matchId) => indexes.manualResults.get(matchId),
+      setMatchResult,
       matchesForRound: (roundId) => indexes.matchesByRound.get(roundId) ?? [],
       sidesForMatch: (matchId) => indexes.sidesByMatch.get(matchId) ?? [],
       outcomes,
@@ -530,6 +612,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
       setScore,
       saveGroups,
       saveMatchups,
+      setRoundHandicaps,
+      setMatchResult,
       update,
       insert,
       remove,

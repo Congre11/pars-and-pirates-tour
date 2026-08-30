@@ -14,6 +14,7 @@ import {
   type ItineraryItem,
   type Match,
   type MatchResult,
+  type RoundHandicap,
   type MatchSide,
   type Player,
   type Round,
@@ -219,6 +220,9 @@ export const fromRoundRow = (r: Row): Round => ({
   formatLabel: str(r.format_label),
   teeTime: nstr(r.tee_time),
   status: (str(r.status, 'upcoming') as Round['status']) ?? 'upcoming',
+  // Anything other than an explicit 'manual' means the formula, so a database
+  // that has not had 0007 run still reads as calculated.
+  handicapSource: str(r.handicap_source, 'calculated') === 'manual' ? 'manual' : 'calculated',
   notes: nstr(r.notes),
   sortOrder: num(r.sort_order),
 });
@@ -234,8 +238,24 @@ export const toRoundRow = (r: Partial<Round>): Row => ({
   ...(r.formatLabel !== undefined && { format_label: r.formatLabel }),
   ...(r.teeTime !== undefined && { tee_time: r.teeTime }),
   ...(r.status !== undefined && { status: r.status }),
+  ...(r.handicapSource !== undefined && { handicap_source: r.handicapSource }),
   ...(r.notes !== undefined && { notes: r.notes }),
   ...(r.sortOrder !== undefined && { sort_order: r.sortOrder }),
+});
+
+export const fromRoundHandicapRow = (r: Row): RoundHandicap => ({
+  roundId: str(r.round_id),
+  playerId: str(r.player_id),
+  courseHandicap: num(r.course_handicap),
+  updatedBy: nstr(r.updated_by),
+  updatedAt: nstr(r.updated_at),
+});
+
+export const toRoundHandicapRow = (r: RoundHandicap): Row => ({
+  round_id: r.roundId,
+  player_id: r.playerId,
+  course_handicap: r.courseHandicap,
+  ...(r.updatedBy !== undefined && { updated_by: r.updatedBy }),
 });
 
 /**
@@ -324,6 +344,8 @@ export const fromResultRow = (r: Row): MatchResult => ({
   finalStatus: str(r.final_status),
   decidedOnHole: nnum(r.decided_on_hole),
   createdAt: str(r.created_at),
+  enteredBy: nstr(r.entered_by),
+  enteredAt: nstr(r.entered_at),
 });
 
 export const toResultRow = (r: Partial<MatchResult>): Row => ({
@@ -333,6 +355,8 @@ export const toResultRow = (r: Partial<MatchResult>): Row => ({
   ...(r.pointsAway !== undefined && { points_away: r.pointsAway }),
   ...(r.finalStatus !== undefined && { final_status: r.finalStatus }),
   ...(r.decidedOnHole !== undefined && { decided_on_hole: r.decidedOnHole }),
+  ...(r.enteredBy !== undefined && { entered_by: r.enteredBy }),
+  ...(r.enteredAt !== undefined && { entered_at: r.enteredAt }),
 });
 
 export const fromItineraryRow = (r: Row): ItineraryItem => ({

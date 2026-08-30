@@ -21,6 +21,7 @@ import {
   fromMatchRow,
   fromPlayerRow,
   fromResultRow,
+  fromRoundHandicapRow,
   fromGroupRow,
   fromRoundRow,
   fromScoreRow,
@@ -42,6 +43,8 @@ import {
   type AdminPatches,
   type SaveGroupsInput,
   type SaveMatchupsInput,
+  type SetMatchResultInput,
+  type SetRoundHandicapsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -72,6 +75,7 @@ const EMPTY: TourSnapshot = {
   sides: [],
   scores: [],
   results: [],
+  roundHandicaps: [],
   itinerary: [],
   activity: [],
   fines: [],
@@ -152,6 +156,7 @@ export class SupabaseTourStore implements TourStore {
       sides,
       scores,
       results,
+      roundHandicaps,
       itinerary,
       activity,
       fines,
@@ -168,6 +173,7 @@ export class SupabaseTourStore implements TourStore {
       supabase.from('match_sides').select('*').order('sort_order'),
       supabase.from('scores').select('*'),
       supabase.from('match_results').select('*'),
+      supabase.from('round_handicaps').select('*'),
       supabase.from('itinerary_items').select('*').order('date').order('sort_order'),
       supabase.from('activity').select('*').order('created_at', { ascending: false }).limit(100),
       supabase.from('fines').select('*').order('created_at', { ascending: false }),
@@ -186,6 +192,7 @@ export class SupabaseTourStore implements TourStore {
       sides,
       scores,
       results,
+      roundHandicaps,
       itinerary,
       activity,
       fines,
@@ -211,6 +218,7 @@ export class SupabaseTourStore implements TourStore {
       sides: (sides.data ?? []).map(fromSideRow),
       scores: (scores.data ?? []).map(fromScoreRow),
       results: (results.data ?? []).map(fromResultRow),
+      roundHandicaps: (roundHandicaps.data ?? []).map(fromRoundHandicapRow),
       itinerary: (itinerary.data ?? []).map(fromItineraryRow),
       activity: (activity.data ?? []).map(fromActivityRow),
       fines: (fines.data ?? []).map(fromFineRow),
@@ -371,6 +379,69 @@ export class SupabaseTourStore implements TourStore {
       const body = await response.json().catch(() => ({ error: response.statusText }));
       throw new Error(body.error ?? 'Could not save the 4-balls');
     }
+  }
+
+  /**
+   * Save a round's manual course handicaps.
+   *
+   * Applied to the snapshot after the server accepts it, like an admin edit:
+   * `round_handicaps` is not a realtime table — handicaps are set before play,
+   * the same argument that keeps `players` off the live list — so without this
+   * the screen would show the old numbers until a reload.
+   */
+  async setRoundHandicaps(input: SetRoundHandicapsInput): Promise<void> {
+    const response = await fetch('/api/admin/round-handicaps', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(body.error ?? 'Could not save the course handicaps');
+    }
+
+    const updatedAt = new Date().toISOString();
+    const next = cloneSnapshot(this.snapshot);
+    const kept = next.roundHandicaps.filter((h) => h.roundId === input.roundId);
+    const byPlayer = new Map(kept.map((h) => [h.playerId, h]));
+    for (const entry of input.entries) {
+      if (entry.courseHandicap === null) byPlayer.delete(entry.playerId);
+      else
+        byPlayer.set(entry.playerId, {
+          roundId: input.roundId,
+          playerId: entry.playerId,
+          courseHandicap: entry.courseHandicap,
+          updatedBy: input.updatedBy,
+          updatedAt,
+        });
+    }
+    next.roundHandicaps = [
+      ...next.roundHandicaps.filter((h) => h.roundId !== input.roundId),
+      ...byPlayer.values(),
+    ];
+    this.emit(next);
+  }
+
+  /**
+   * Declare or clear an organiser result.
+   *
+   * `match_results` IS a realtime table, so every other phone picks this up on
+   * its own. The row the server returns is applied here too, so the device
+   * that entered it does not wait on the round trip.
+   */
+  async setMatchResult(input: SetMatchResultInput): Promise<void> {
+    const response = await fetch('/api/admin/match-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const body = await response.json().catch(() => ({ error: response.statusText }));
+    if (!response.ok) throw new Error(body.error ?? 'Could not save the result');
+
+    const next = cloneSnapshot(this.snapshot);
+    next.results = next.results.filter((r) => r.matchId !== input.matchId);
+    if (body.result) next.results.push(fromResultRow(body.result));
+    this.emit(next);
   }
 
   async saveMatchups(input: SaveMatchupsInput): Promise<void> {

@@ -10,6 +10,7 @@ import { PageHeader, SectionTitle, Warning } from '@/components/ui';
 import { FORMAT_LABELS, allowanceForMatch, type HandicapAllowance } from '@/lib/types';
 import { courseHandicapLabel, handicapLabel } from '@/lib/format';
 import { ordinal } from '@/lib/tour-helpers';
+import { MANUAL_HANDICAPS_INCOMPLETE } from '@/lib/rounds/round-setup';
 
 /**
  * The allowance in a few words, for the strip under the scorecard header.
@@ -106,6 +107,12 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
     hole != null &&
     hole.complete &&
     hole.holeNo < furthestScored;
+
+  // Manual course handicaps with somebody missing: stop rather than guess.
+  const missingManual = outcome.missingManualPlayerIds
+    .map((id) => playerById(id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const handicapsBlocked = missingManual.length > 0;
 
   const statusText = outcome.isComplete
     ? outcome.winnerSideId
@@ -287,11 +294,23 @@ export default function MatchPage({ params }: { params: Promise<{ matchId: strin
             </button>
           )}
 
+          {handicapsBlocked && (
+            <Warning href={`/admin/rounds/${match.roundId}/handicaps`}>
+              <strong>{MANUAL_HANDICAPS_INCOMPLETE}</strong> No manual course handicap for{' '}
+              {missingManual.join(', ')}.
+            </Warning>
+          )}
+          {outcome.manualResult && (
+            <Warning>
+              This result was set by {outcome.manualResult.enteredBy ?? 'an organiser'} rather than
+              worked out from the holes below. It is what the leaderboard uses.
+            </Warning>
+          )}
           <ScoreEntry
             match={match}
             outcome={outcome}
             holeNo={activeHole}
-            locked={Boolean(locked)}
+            locked={Boolean(locked) || handicapsBlocked}
             onScored={() => {
               // Releasing the explicit choice lets the card follow the first
               // unscored hole again — so finishing a hole steps you forward

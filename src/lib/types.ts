@@ -417,8 +417,47 @@ export interface Round {
   formatLabel: string;
   teeTime: string | null; // HH:MM
   status: RoundStatus;
+  /**
+   * Where this round's course handicaps come from.
+   *
+   * `calculated` — the World Handicap System formula off the round's tee.
+   * `manual`     — one number typed in per player, in `RoundHandicap`. The
+   *                formula is not consulted at all, and a player with no
+   *                manual figure is an error rather than a fallback: after a
+   *                round was scored off the wrong tee, silently substituting a
+   *                calculated number is the exact failure to avoid.
+   */
+  handicapSource: RoundHandicapSource;
   notes: string | null;
   sortOrder: number;
+}
+
+export type RoundHandicapSource = 'calculated' | 'manual';
+
+/**
+ * One player's course handicap for one round, entered by hand.
+ *
+ * Deliberately per round, not per player: Day 1 is finished and must keep the
+ * numbers it was played off, so a manual figure for Day 2 cannot reach it.
+ */
+export interface RoundHandicap {
+  roundId: string;
+  playerId: string;
+  courseHandicap: number;
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+/**
+ * A completed round is history.
+ *
+ * Its course, tee, ratings and handicaps are what the match was actually
+ * played off, so the setup screens make them read-only. The one thing that
+ * stays editable is the official result — which is the whole point of the
+ * organiser override.
+ */
+export function isRoundLocked(round: Pick<Round, 'status'>): boolean {
+  return round.status === 'complete';
 }
 
 /**
@@ -537,6 +576,16 @@ export interface Score {
   updatedAt: string | null;
 }
 
+/**
+ * An official match result set by an organiser.
+ *
+ * Nothing in the app derives one of these: the scoring engine works out a
+ * match from its hole scores, and a row here exists only because a person
+ * entered it. So a match with a result row is one where hole-by-hole scoring
+ * was abandoned — a dead phone, a lost signal, a round played on paper — and
+ * the row is the authoritative result for the leaderboard until an organiser
+ * clears it.
+ */
 export interface MatchResult {
   matchId: string;
   winnerTeamId: string | null;
@@ -546,7 +595,13 @@ export interface MatchResult {
   finalStatus: string;
   decidedOnHole: number | null;
   createdAt: string;
+  /** Who entered it. Present on every organiser result. */
+  enteredBy: string | null;
+  enteredAt: string | null;
 }
+
+/** What an organiser can declare for a completed match. */
+export type ManualOutcome = 'home' | 'away' | 'halved';
 
 export type ItineraryCategory =
   | 'golf'
@@ -633,6 +688,7 @@ export interface TourSnapshot {
   sides: MatchSide[];
   scores: Score[];
   results: MatchResult[];
+  roundHandicaps: RoundHandicap[];
   itinerary: ItineraryItem[];
   activity: Activity[];
   fines: Fine[];

@@ -19,6 +19,7 @@ import type {
   Match,
   MatchSide,
   Player,
+  ManualOutcome,
   Round,
   Score,
   Tee,
@@ -121,6 +122,34 @@ export interface SaveGroupsInput {
   };
 }
 
+/**
+ * Saving a round's manual course handicaps.
+ *
+ * The whole round is sent together because it is reviewed together: the screen
+ * shows every player and warns while any of them is blank. A `null` clears
+ * that player's figure, which is how a mistake is taken back — there is no
+ * silent fallback to the calculated number, so a cleared player leaves the
+ * round incomplete and scoring stays blocked.
+ */
+export interface SetRoundHandicapsInput {
+  roundId: string;
+  entries: Array<{ playerId: string; courseHandicap: number | null }>;
+  updatedBy: string;
+}
+
+/**
+ * Declaring an official result for a match by hand.
+ *
+ * The points are NOT sent: the server works them out from the match's own
+ * stake and its round's halve rule, so a client cannot invent a scoreline.
+ * `null` clears the override and hands the match back to hole-by-hole scoring.
+ */
+export interface SetMatchResultInput {
+  matchId: string;
+  outcome: ManualOutcome | null;
+  enteredBy: string;
+}
+
 /** Saving who is playing whom, optionally confirming it for the round. */
 export interface SaveMatchupsInput {
   sides: Array<{ id: string; playerIds: string[] }>;
@@ -144,6 +173,10 @@ export interface TourStore {
   setScore(input: SetScoreInput): Promise<void>;
   /** Save a round's 4-balls, replacing the whole set for that round. */
   saveGroups(input: SaveGroupsInput): Promise<void>;
+  /** Save a round's manually entered course handicaps. */
+  setRoundHandicaps(input: SetRoundHandicapsInput): Promise<void>;
+  /** Declare (or clear) an organiser result for one match. */
+  setMatchResult(input: SetMatchResultInput): Promise<void>;
   /**
    * Save who is playing whom: the players on each side of a match.
    *
@@ -207,6 +240,7 @@ export function cloneSnapshot(snapshot: TourSnapshot): TourSnapshot {
     sides: [...snapshot.sides],
     scores: [...snapshot.scores],
     results: [...snapshot.results],
+    roundHandicaps: [...snapshot.roundHandicaps],
     itinerary: [...snapshot.itinerary],
     activity: [...snapshot.activity],
     fines: [...snapshot.fines],
