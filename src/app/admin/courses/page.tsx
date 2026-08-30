@@ -6,6 +6,7 @@ import { useTour } from '@/lib/data/provider';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { Accordion, NumberField, TextField, ToggleField } from '@/components/admin/fields';
 import { Warning } from '@/components/ui';
+import { lockedByLabel, lockedRoundsForCourse } from '@/lib/rounds/round-setup';
 
 /**
  * Course data entry.
@@ -37,6 +38,10 @@ export default function AdminCoursesPage() {
         const indexes = holes.map((h) => h.strokeIndex).sort((a, b) => a - b);
         const duplicateIndexes = indexes.filter((si, i) => i > 0 && si === indexes[i - 1]);
         const teePar = tees.find((t) => t.id === teeId)?.par;
+        // A course a completed round was played on is history. Its ratings are
+        // what the handicaps were worked out from, so they stop being editable.
+        const lockedBy = lockedRoundsForCourse(snapshot.rounds, course.id);
+        const courseLocked = lockedBy.length > 0;
 
         return (
           <Accordion
@@ -51,9 +56,24 @@ export default function AdminCoursesPage() {
               )
             }
           >
-            <Link href={`/admin/courses/${course.id}/verify`} className="btn-primary w-full text-sm">
-              📷 Verify with a scorecard photo
-            </Link>
+            {courseLocked ? (
+              <Warning>
+                {lockedByLabel(lockedBy)} {lockedBy.length === 1 ? 'has' : 'have'} been played on
+                this course. Its ratings, par and stroke indexes are what those handicaps were
+                worked out from, so they are read-only now. Set the official result on{' '}
+                <Link href="/admin/results" className="underline">
+                  official results
+                </Link>{' '}
+                if a score is wrong.
+              </Warning>
+            ) : (
+              <Link
+                href={`/admin/courses/${course.id}/verify`}
+                className="btn-primary w-full text-sm"
+              >
+                📷 Verify with a scorecard photo
+              </Link>
+            )}
             {course.dataVerified && course.verifiedAt && (
               <p className="rounded-lg bg-fairway-500/10 px-3 py-2 text-xs text-fairway-300">
                 Verified{course.verifiedBy ? ` by ${course.verifiedBy}` : ''} on{' '}
@@ -62,6 +82,7 @@ export default function AdminCoursesPage() {
               </p>
             )}
 
+            {!courseLocked && (
             <ToggleField
               label="Data verified"
               value={course.dataVerified}
@@ -73,6 +94,7 @@ export default function AdminCoursesPage() {
                 })
               }
             />
+            )}
 
             {duplicateIndexes.length > 0 && (
               <Warning>
@@ -119,27 +141,41 @@ export default function AdminCoursesPage() {
                         style={{ backgroundColor: tee.colour }}
                       />
                       <span className="text-sm font-bold">{tee.name}</span>
+                      {snapshot.rounds
+                        .filter((round) => round.teeId === tee.id)
+                        .map((round) => (
+                          <span key={round.id} className="chip bg-white/10 text-chalk-300">
+                            Day {round.dayNo}
+                          </span>
+                        ))}
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <NumberField
-                        label="Rating"
-                        value={tee.courseRating}
-                        step={0.1}
-                        onSave={(value) => update('tees', tee.id, { courseRating: value ?? 72 })}
-                      />
-                      <NumberField
-                        label="Slope"
-                        value={tee.slopeRating}
-                        min={55}
-                        max={155}
-                        onSave={(value) => update('tees', tee.id, { slopeRating: value ?? 113 })}
-                      />
-                      <NumberField
-                        label="Par"
-                        value={tee.par}
-                        onSave={(value) => update('tees', tee.id, { par: value ?? 72 })}
-                      />
-                    </div>
+                    {courseLocked ? (
+                      <p className="tabular text-xs text-chalk-400">
+                        CR {tee.courseRating} · Slope {tee.slopeRating} · Par {tee.par}
+                        <span className="ml-2 text-brass-300">locked</span>
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        <NumberField
+                          label="Rating"
+                          value={tee.courseRating}
+                          step={0.1}
+                          onSave={(value) => update('tees', tee.id, { courseRating: value ?? 72 })}
+                        />
+                        <NumberField
+                          label="Slope"
+                          value={tee.slopeRating}
+                          min={55}
+                          max={155}
+                          onSave={(value) => update('tees', tee.id, { slopeRating: value ?? 113 })}
+                        />
+                        <NumberField
+                          label="Par"
+                          value={tee.par}
+                          onSave={(value) => update('tees', tee.id, { par: value ?? 72 })}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -182,6 +218,7 @@ export default function AdminCoursesPage() {
                             value={hole.par}
                             min={3}
                             max={6}
+                            readOnly={courseLocked}
                             onSave={(value) => update('holes', hole.id, { par: value })}
                           />
                         </td>
@@ -190,6 +227,7 @@ export default function AdminCoursesPage() {
                             value={hole.strokeIndex}
                             min={1}
                             max={18}
+                            readOnly={courseLocked}
                             onSave={(value) => update('holes', hole.id, { strokeIndex: value })}
                           />
                         </td>
@@ -199,6 +237,7 @@ export default function AdminCoursesPage() {
                             min={0}
                             max={800}
                             wide
+                            readOnly={courseLocked}
                             onSave={(value) =>
                               teeId
                                 ? update('holes', hole.id, {
@@ -240,12 +279,15 @@ function CellInput({
   min,
   max,
   wide,
+  readOnly,
 }: {
   value: number;
   onSave: (value: number) => Promise<void> | void | undefined;
   min?: number;
   max?: number;
   wide?: boolean;
+  /** A completed round played this card. It is history, not a draft. */
+  readOnly?: boolean;
 }) {
   const [local, setLocal] = useState(String(value));
   const [dirty, setDirty] = useState(false);
@@ -261,8 +303,9 @@ function CellInput({
     <input
       className={`tabular rounded-md border border-white/10 bg-ink-900 px-1 py-1.5 text-center text-xs ${
         wide ? 'w-16' : 'w-12'
-      } focus:border-fairway-400 focus:outline-none`}
+      } ${readOnly ? 'opacity-60' : ''} focus:border-fairway-400 focus:outline-none`}
       value={local}
+      readOnly={readOnly}
       inputMode="numeric"
       onChange={(e) => {
         setDirty(true);

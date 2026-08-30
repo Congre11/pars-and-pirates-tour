@@ -160,6 +160,17 @@ export interface SideHandicapInput {
   handicapOverride: number | null;
 }
 
+/**
+ * Course handicaps typed in for a round, instead of derived from the tee.
+ *
+ * When this is supplied the WHS formula is not consulted at all — not even as
+ * a fallback for a player who is missing. A missing player is reported in
+ * `missingManualPlayerIds` and treated as zero, which the UI turns into a
+ * blocking warning. That is deliberate: a round was already scored off the
+ * wrong tee once, and a silent substitution is exactly how that happens.
+ */
+export type ManualCourseHandicaps = Readonly<Record<string, number>>;
+
 export interface SideHandicapResult {
   /** Course handicap per player id, before the format allowance. */
   courseHandicaps: Record<string, number>;
@@ -171,6 +182,11 @@ export interface SideHandicapResult {
   playingHandicap: number;
   /** True when a player is missing a handicap index and was treated as 0. */
   hasMissingIndex: boolean;
+  /**
+   * Players on this side with no manually entered course handicap, when the
+   * round is in manual mode. Empty in calculated mode.
+   */
+  missingManualPlayerIds: string[];
 }
 
 /**
@@ -192,6 +208,11 @@ export function computeMatchHandicaps(
   settings: TourSettings,
   /** This match's own allowance, if an admin set one. Null uses the default. */
   allowanceOverride: HandicapAllowance | null = null,
+  /**
+   * Manually entered course handicaps for the round. When present these are
+   * the ONLY source of a course handicap — see `ManualCourseHandicaps`.
+   */
+  manual: ManualCourseHandicaps | null = null,
 ): SideHandicapResult[] {
   // A fixed tournament rule wins over both the stored setting and any
   // per-match override — see FIXED_ALLOWANCES.
@@ -201,11 +222,30 @@ export function computeMatchHandicaps(
     const courseHandicaps: Record<string, number> = {};
     const playerPlayingHandicaps: Record<string, number> = {};
     let hasMissingIndex = false;
+    const missingManualPlayerIds: string[] = [];
 
     for (const player of side.players) {
       if (player.handicapIndex === null) hasMissingIndex = true;
       const index = player.handicapIndex ?? 0;
-      const ch = settings.handicapsEnabled ? courseHandicap(index, tee) : 0;
+
+      let ch: number;
+      if (!settings.handicapsEnabled) {
+        ch = 0;
+      } else if (manual) {
+        // Manual mode. No fallback: a player with nothing entered scores off
+        // zero AND is reported, so the round refuses to start rather than
+        // quietly using a number nobody chose.
+        const entered = manual[player.id];
+        if (entered === undefined) {
+          missingManualPlayerIds.push(player.id);
+          ch = 0;
+        } else {
+          ch = entered;
+        }
+      } else {
+        ch = courseHandicap(index, tee);
+      }
+
       courseHandicaps[player.id] = ch;
       playerPlayingHandicaps[player.id] = settings.handicapsEnabled
         ? applyRounding(ch * (allowance.weights[0] ?? 1), allowance.rounding)
@@ -224,6 +264,7 @@ export function computeMatchHandicaps(
       rawPlayingHandicap,
       playingHandicap: rawPlayingHandicap,
       hasMissingIndex,
+      missingManualPlayerIds,
     };
   });
 

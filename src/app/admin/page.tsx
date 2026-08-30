@@ -17,6 +17,8 @@ export default function AdminPage() {
 
   const missingHandicaps = snapshot.players.filter((p) => p.handicapIndex === null).length;
   const unverifiedCourses = snapshot.courses.filter((c) => !c.dataVerified).length;
+  // Every row in `results` was typed in by a person — nothing writes one.
+  const manualResults = snapshot.results.length;
 
   return (
     <div className="space-y-3 pb-6">
@@ -73,6 +75,21 @@ export default function AdminPage() {
 
       <SectionTitle>During the tour</SectionTitle>
       <div className="space-y-2">
+        <LinkRow
+          href="/admin/results"
+          title="Official results"
+          detail={
+            manualResults > 0
+              ? `${manualResults} result${manualResults === 1 ? '' : 's'} set by hand`
+              : 'Set a match result without scoring every hole'
+          }
+          icon="🏁"
+          trailing={
+            manualResults > 0 ? (
+              <span className="chip bg-brass-500/25 text-brass-300">{manualResults}</span>
+            ) : undefined
+          }
+        />
         <LinkRow href="/admin/scores" title="Correct scores" detail="Fix any hole, reset a practice run" icon="✏️" />
         <LinkRow href="/fines" title="Fines" detail="Add and settle fines" icon="💸" />
       </div>

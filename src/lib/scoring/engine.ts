@@ -15,12 +15,15 @@ import {
   computeMatchHandicaps,
   isPerPlayerFormat,
   strokesForHoles,
+  type ManualCourseHandicaps,
   type SideHandicapResult,
 } from './handicap';
 import {
   isTeamBallFormat,
   type Hole,
+  type ManualOutcome,
   type Match,
+  type MatchResult,
   type MatchSide,
   type Player,
   type Score,
@@ -131,6 +134,42 @@ export interface MatchOutcome {
   holesWon: Record<string, number>;
   /** True when a player in this match has no handicap index on file. */
   hasMissingHandicap: boolean;
+  /**
+   * Players in this match whose round is on manual handicaps but who have no
+   * figure entered. Non-empty means scoring must not start — the app says so
+   * rather than quietly playing them off something nobody chose.
+   */
+  missingManualPlayerIds: string[];
+  /**
+   * Set when an organiser declared this result by hand instead of it being
+   * derived from hole scores. Shown wherever the result appears.
+   */
+  manualResult: { enteredBy: string | null; enteredAt: string | null } | null;
+}
+
+/**
+ * What a match pays out.
+ *
+ * The one place the halve rules live, used by the scoring engine and by an
+ * organiser's manual result alike so the two can never disagree:
+ *
+ *   Day 1 / Day 2 / Day 4 — win 1, halve 0.5 each
+ *   Day 3                 — win 0.5, halve NOTHING to either side
+ *
+ * The stake (`pointsValue`) is untouched either way, so a burned half still
+ * counts toward the tour's 11 points; it simply goes unclaimed.
+ */
+export function pointsForMatch(
+  pointsValue: number,
+  settings: TourSettings,
+  halveAwardsNothing: boolean,
+): { win: number; half: number } {
+  const halfRatio =
+    settings.pointsPerWin > 0 ? settings.pointsPerHalf / settings.pointsPerWin : 0.5;
+  return {
+    win: pointsValue,
+    half: halveAwardsNothing ? 0 : pointsValue * halfRatio,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +194,12 @@ export interface ComputeMatchInput {
    * just goes unclaimed.
    */
   halveAwardsNothing?: boolean;
+  /**
+   * Course handicaps typed in for this round, when the round is on manual
+   * handicaps. Present means the WHS formula is not used at all — including
+   * for a player who has nothing entered, who is reported instead.
+   */
+  manualCourseHandicaps?: ManualCourseHandicaps | null;
 }
 
 export function computeMatch(input: ComputeMatchInput): MatchOutcome {
@@ -178,6 +223,7 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
     tee,
     settings,
     match.allowanceOverride,
+    input.manualCourseHandicaps ?? null,
   );
 
   const handicaps: Record<string, SideHandicapResult> = {};
@@ -186,10 +232,13 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   const playerStrokes: Record<string, Record<number, number>> = {};
   let hasMissingHandicap = false;
 
+  const missingManualPlayerIds: string[] = [];
+
   orderedSides.forEach((side, i) => {
     const result = handicapResults[i];
     handicaps[side.id] = result;
     if (result.hasMissingIndex) hasMissingHandicap = true;
+    missingManualPlayerIds.push(...result.missingManualPlayerIds);
 
     // Strokes are dealt across the holes this match actually plays, ranked by
     // their real stroke index — so a six-hole block pays the whole difference
@@ -377,12 +426,13 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
   const isDormie = !isComplete && up > 0 && up === holesRemaining;
 
   // --- Points -------------------------------------------------------------
-  const halfRatio =
-    settings.pointsPerWin > 0 ? settings.pointsPerHalf / settings.pointsPerWin : 0.5;
-  const winPoints = match.pointsValue;
-  // A burned half pays nobody. The stake below is unchanged, so the point is
-  // still advertised as on offer — it simply goes unclaimed.
-  const halfPoints = halveAwardsNothing ? 0 : match.pointsValue * halfRatio;
+  // A burned half pays nobody. The stake is unchanged, so the point is still
+  // advertised as on offer — it simply goes unclaimed.
+  const { win: winPoints, half: halfPoints } = pointsForMatch(
+    match.pointsValue,
+    settings,
+    halveAwardsNothing,
+  );
 
   const points: Record<string, number> = Object.fromEntries(orderedSides.map((s) => [s.id, 0]));
   const projectedPoints: Record<string, number> = { ...points };
@@ -431,6 +481,87 @@ export function computeMatch(input: ComputeMatchInput): MatchOutcome {
     projectedPoints,
     holesWon,
     hasMissingHandicap: hasMissingHandicap && settings.handicapsEnabled,
+    missingManualPlayerIds,
+    manualResult: null,
+  };
+}
+
+/**
+ * Turn "Pars win" / "Pirates win" / "Halved" into a storable result row.
+ *
+ * Shared by the demo store and the server route so both write the same thing,
+ * and so the points can only ever come from the match's own stake and its
+ * round's halve rule — never from anything a client sent.
+ */
+export function buildManualResult(input: {
+  match: Match;
+  /** The match's sides. Index 0 is home, index 1 away, by `sortOrder`. */
+  sides: MatchSide[];
+  outcome: ManualOutcome;
+  settings: TourSettings;
+  halveAwardsNothing: boolean;
+  enteredBy: string;
+}): MatchResult {
+  const { match, outcome, settings, halveAwardsNothing, enteredBy } = input;
+  const ordered = [...input.sides].sort((a, b) => a.sortOrder - b.sortOrder);
+  const { win, half } = pointsForMatch(match.pointsValue, settings, halveAwardsNothing);
+
+  const winnerSide =
+    outcome === 'home' ? ordered[0] : outcome === 'away' ? ordered[1] : undefined;
+
+  const now = new Date().toISOString();
+  return {
+    matchId: match.id,
+    winnerTeamId: winnerSide?.teamId ?? null,
+    pointsHome: outcome === 'halved' ? half : outcome === 'home' ? win : 0,
+    pointsAway: outcome === 'halved' ? half : outcome === 'away' ? win : 0,
+    finalStatus: outcome === 'halved' ? 'Halved' : 'Won',
+    decidedOnHole: null,
+    createdAt: now,
+    enteredBy,
+    enteredAt: now,
+  };
+}
+
+/**
+ * Overlay an organiser's declared result onto a computed match.
+ *
+ * Used when live scoring failed and the winner was entered by hand. The hole
+ * detail, handicaps and stroke allocation are left exactly as computed, so the
+ * scorecard still shows whatever was entered before things went wrong — only
+ * the result and the points are replaced.
+ *
+ * The points are recomputed here from the match's own stake rather than read
+ * off the stored row, so a manual result obeys the same halve rules as a
+ * played-out one by construction. `pointsValue` is untouched: the tour total
+ * stays at 11 and the winning line stays at 6.
+ */
+export function applyManualResult(
+  outcome: MatchOutcome,
+  result: MatchResult,
+  sides: MatchSide[],
+  settings: TourSettings,
+  halveAwardsNothing: boolean,
+): MatchOutcome {
+  const { win, half } = pointsForMatch(outcome.pointsValue, settings, halveAwardsNothing);
+  const winnerSideId = result.winnerTeamId
+    ? (sides.find((side) => side.teamId === result.winnerTeamId)?.id ?? null)
+    : null;
+
+  const points: Record<string, number> = Object.fromEntries(
+    sides.map((side) => [side.id, winnerSideId ? (side.id === winnerSideId ? win : 0) : half]),
+  );
+
+  return {
+    ...outcome,
+    isComplete: true,
+    winnerSideId,
+    finalStatus: result.finalStatus || (winnerSideId ? 'Won' : 'Halved'),
+    // Nobody decided it on a hole — it was declared.
+    decidedOnHole: null,
+    points,
+    projectedPoints: { ...points },
+    manualResult: { enteredBy: result.enteredBy, enteredAt: result.enteredAt },
   };
 }
 

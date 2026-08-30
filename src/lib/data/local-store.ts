@@ -11,6 +11,8 @@
  */
 
 import { SEED_VERSION, buildSeedSnapshot } from '@/lib/seed/tour';
+import { buildManualResult } from '@/lib/scoring/engine';
+import { halvesAwardNothing } from '@/lib/rounds/matchups';
 import {
   ENTITY_TO_KEY,
   cloneSnapshot,
@@ -20,6 +22,8 @@ import {
   type AdminPatches,
   type SaveGroupsInput,
   type SaveMatchupsInput,
+  type SetMatchResultInput,
+  type SetRoundHandicapsInput,
   type SetScoreInput,
   type StoreMode,
   type TourStore,
@@ -56,6 +60,11 @@ export class LocalTourStore implements TourStore {
         const parsed = JSON.parse(raw) as StoredSnapshot;
         // Guard against a half-written or outdated payload.
         if (parsed?.tour?.id && Array.isArray(parsed.matches)) {
+          // A snapshot written before manual handicaps existed has no list.
+          // Filling it in here rather than bumping SEED_VERSION matters: a
+          // bump rebuilds from seed and would throw away pairings and
+          // 4-balls, which for a tour already under way is unacceptable.
+          if (!Array.isArray(parsed.roundHandicaps)) parsed.roundHandicaps = [];
           if ((parsed.seedVersion ?? 1) === SEED_VERSION) return parsed;
 
           // The seeded structure has changed since this device last wrote.
@@ -90,10 +99,12 @@ export class LocalTourStore implements TourStore {
   private migrate(parsed: StoredSnapshot): TourSnapshot {
     const seed = buildSeedSnapshot();
     const liveMatchIds = new Set(seed.matches.map((m) => m.id));
+    const liveRoundIds = new Set(seed.rounds.map((r) => r.id));
     return {
       ...seed,
       scores: (parsed.scores ?? []).filter((s) => liveMatchIds.has(s.matchId)),
       results: (parsed.results ?? []).filter((r) => liveMatchIds.has(r.matchId)),
+      roundHandicaps: (parsed.roundHandicaps ?? []).filter((h) => liveRoundIds.has(h.roundId)),
       fines: parsed.fines ?? seed.fines,
       activity: parsed.activity ?? seed.activity,
     };
@@ -245,6 +256,54 @@ export class LocalTourStore implements TourStore {
     this.commit(next);
   }
 
+  async setRoundHandicaps(input: SetRoundHandicapsInput): Promise<void> {
+    const next = cloneSnapshot(this.snapshot);
+    const updatedAt = new Date().toISOString();
+    // Other rounds are untouched: a manual figure typed for Day 2 can never
+    // reach the round it was not entered against.
+    const others = next.roundHandicaps.filter((h) => h.roundId !== input.roundId);
+    const kept = next.roundHandicaps.filter((h) => h.roundId === input.roundId);
+    const byPlayer = new Map(kept.map((h) => [h.playerId, h]));
+
+    for (const entry of input.entries) {
+      if (entry.courseHandicap === null) byPlayer.delete(entry.playerId);
+      else
+        byPlayer.set(entry.playerId, {
+          roundId: input.roundId,
+          playerId: entry.playerId,
+          courseHandicap: entry.courseHandicap,
+          updatedBy: input.updatedBy,
+          updatedAt,
+        });
+    }
+
+    next.roundHandicaps = [...others, ...byPlayer.values()];
+    this.commit(next);
+  }
+
+  async setMatchResult(input: SetMatchResultInput): Promise<void> {
+    const next = cloneSnapshot(this.snapshot);
+    const match = next.matches.find((m) => m.id === input.matchId);
+    if (!match) throw new Error('Match not found');
+
+    next.results = next.results.filter((r) => r.matchId !== input.matchId);
+    if (input.outcome) {
+      next.results.push(
+        buildManualResult({
+          match,
+          sides: next.sides.filter((side) => side.matchId === match.id),
+          outcome: input.outcome,
+          settings: next.tour.settings,
+          halveAwardsNothing: halvesAwardNothing(
+            next.matches.filter((m) => m.roundId === match.roundId),
+          ),
+          enteredBy: input.enteredBy,
+        }),
+      );
+    }
+    this.commit(next);
+  }
+
   async update<K extends AdminEntity>(
     entity: K,
     id: string,
@@ -290,7 +349,9 @@ export class LocalTourStore implements TourStore {
   async resetScores(): Promise<void> {
     const next = cloneSnapshot(this.snapshot);
     next.scores = [];
-    next.results = [];
+    // Organiser results survive: they were typed in about a round that has
+    // been played, and rescoring cannot recreate them. Clear one from the
+    // results screen instead.
     this.commit(next);
   }
 

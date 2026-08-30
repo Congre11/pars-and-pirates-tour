@@ -28,19 +28,24 @@ export function MatchTile({ matchId, showFormat = true }: { matchId: string; sho
         ? 'ALL SQUARE'
         : `${outcome.up} UP`;
 
-  const thru = outcome.isComplete
-    ? outcome.decidedOnHole
-      ? `Finished on ${outcome.decidedOnHole}`
-      : 'Final'
-    : outcome.holesPlayed === 0
-      ? `${outcome.totalHoles} holes`
-      : `Thru ${outcome.holesPlayed}`;
+  const thru = outcome.manualResult
+    ? 'Organiser result'
+    : outcome.isComplete
+      ? outcome.decidedOnHole
+        ? `Finished on ${outcome.decidedOnHole}`
+        : 'Final'
+      : outcome.holesPlayed === 0
+        ? `${outcome.totalHoles} holes`
+        : `Thru ${outcome.holesPlayed}`;
 
   return (
     <Link href={`/match/${match.id}`} className="card tap block overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/6 px-3.5 py-2">
         <span className="truncate text-sm font-semibold text-chalk-200">{match.name}</span>
         <span className="flex items-center gap-2">
+          {outcome.manualResult && (
+            <span className="chip bg-brass-500/25 text-brass-300">ORGANISER</span>
+          )}
           {showFormat && (
             <span className="label !tracking-wider">{FORMAT_SHORT_LABELS[match.format]}</span>
           )}

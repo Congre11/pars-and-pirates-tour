@@ -8,6 +8,7 @@ import { AdminShell } from '@/components/admin/AdminShell';
 import { EmptyState, SectionTitle, Warning } from '@/components/ui';
 import { formatBytes, prepareScorecardImage } from '@/lib/courses/image';
 import { summariseMissing, type Confidence, type ExtractedScorecard } from '@/lib/courses/extraction';
+import { lockedByLabel, lockedRoundsForCourse, saveToTeeLabel } from '@/lib/rounds/round-setup';
 import type { DistanceUnit } from '@/lib/types';
 
 /**
@@ -57,10 +58,19 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
   const holes = holesForCourse(courseId);
 
   const roundsHere = snapshot.rounds.filter((r) => r.courseId === courseId);
-  const defaultTeeId = roundsHere[0]?.teeId ?? tees[0]?.id ?? '';
+
+  // NO DEFAULT. This screen used to open on the round's tee, so ratings read
+  // off a White card were saved onto the Yellow row without anyone choosing
+  // it — and the save then renamed Yellow to "White", which is why it looked
+  // impossible to correct. Nothing here writes anything until a tee has been
+  // picked deliberately.
   const [teeId, setTeeId] = useState<string>('');
-  const activeTeeId = teeId || defaultTeeId;
+  const activeTeeId = teeId;
   const activeTee = tees.find((t) => t.id === activeTeeId);
+
+  // A course a completed round was played on is history, not a draft.
+  const lockedBy = lockedRoundsForCourse(snapshot.rounds, courseId);
+  const courseLocked = lockedBy.length > 0;
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [image, setImage] = useState<{ dataUrl: string; mimeType: string; bytes: number } | null>(null);
@@ -266,7 +276,7 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
 
   // --- Step 5/6: save (never verifies on its own) --------------------------
   const save = async (): Promise<boolean> => {
-    if (!currentDraft || !activeTee) return false;
+    if (!currentDraft || !activeTee || courseLocked) return false;
     setBusy('saving');
     setError(null);
     try {
@@ -274,8 +284,12 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
         name: currentDraft.courseName.trim() || course.name,
         sourceNotes: currentDraft.sourceNotes.trim() || null,
       });
+      // The tee's NAME is deliberately not written. It used to be taken from
+      // the photo, so photographing a White card while another tee was
+      // selected renamed that tee "White" and gave it White's ratings. The
+      // name a tee has is the name of the row you chose; a mismatch with the
+      // photo is warned about above instead.
       await update('tees', activeTee.id, {
-        name: currentDraft.teeName.trim() || activeTee.name,
         distanceUnit: currentDraft.distanceUnit,
         par: currentDraft.par ?? activeTee.par,
         courseRating: currentDraft.courseRating ?? activeTee.courseRating,
@@ -306,7 +320,7 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
 
   // --- Step 9: the explicit verify action ----------------------------------
   const confirmAndVerify = async () => {
-    if (!missing.canVerify) return;
+    if (!missing.canVerify || !activeTee || courseLocked) return;
     const saved = await save();
     if (!saved) return;
     await update('courses', course.id, {
@@ -357,8 +371,16 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
         </p>
       )}
 
+      {courseLocked && (
+        <Warning>
+          {lockedByLabel(lockedBy)} {lockedBy.length === 1 ? 'has' : 'have'} been played on this
+          course. Its ratings are what those handicaps were worked out from, so nothing on this
+          screen can be saved. Set the official result on Tour settings → Official results instead.
+        </Warning>
+      )}
+
       {/* --- Which tee ------------------------------------------------------- */}
-      <SectionTitle>1 · Which tee are you playing?</SectionTitle>
+      <SectionTitle>1 · Which tee are you saving to?</SectionTitle>
       <div className="flex gap-2">
         {tees.map((tee) => (
           <button
@@ -381,10 +403,26 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
           </button>
         ))}
       </div>
-      <p className="text-xs text-chalk-500">
-        Everything below applies to the {activeTee?.name ?? 'selected'} tee. Change the round’s tee
-        in Tour settings → Rounds.
-      </p>
+      {activeTee ? (
+        <p className="rounded-xl border border-fairway-400/30 bg-fairway-500/10 px-3 py-2.5 text-sm text-fairway-300">
+          Saving to the <strong>{activeTee.name.toUpperCase()}</strong> tee. Nothing on this screen
+          touches any other tee. Which tee a round is played off is set in Tour settings → Rounds.
+        </p>
+      ) : (
+        <Warning>
+          Choose a tee before entering anything. There is no default: Course Rating and Slope are
+          saved to the tee you pick here and nowhere else.
+        </Warning>
+      )}
+
+      {activeTee && currentDraft?.teeName.trim() &&
+        currentDraft.teeName.trim().toLowerCase() !== activeTee.name.trim().toLowerCase() && (
+          <Warning>
+            The photo says “{currentDraft.teeName}” but you are saving to{' '}
+            <strong>{activeTee.name}</strong>. Check you have the right tee selected — the ratings
+            below will be written to {activeTee.name}.
+          </Warning>
+        )}
 
       {/* --- Photo ------------------------------------------------------------ */}
       <SectionTitle>2 · Photograph the official scorecard</SectionTitle>
@@ -462,12 +500,11 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
             </Field>
 
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Tee name" flagged={isUncertain('teeName')}>
-                <input
-                  className="field"
-                  value={currentDraft.teeName}
-                  onChange={(e) => patchDraft({ teeName: e.target.value })}
-                />
+              {/* Read-only. This is what the CARD says; the tee being written
+                  to is the one selected at the top, and the two are compared
+                  above rather than one overwriting the other. */}
+              <Field label="Tee on the card" flagged={isUncertain('teeName')}>
+                <input className="field opacity-70" value={currentDraft.teeName} readOnly />
               </Field>
               <Field label="Distance unit" flagged={isUncertain('distanceUnit')}>
                 <select
@@ -618,8 +655,12 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
 
           {/* --- Save / verify ---------------------------------------------- */}
           <div className="space-y-2 pt-1">
-            <button onClick={() => void save()} disabled={busy !== 'idle'} className="btn-ghost w-full">
-              {busy === 'saving' ? 'Saving…' : 'Save without verifying'}
+            <button
+              onClick={() => void save()}
+              disabled={busy !== 'idle' || !activeTee || courseLocked}
+              className="btn-ghost w-full"
+            >
+              {busy === 'saving' ? 'Saving…' : saveToTeeLabel(activeTee)}
             </button>
 
             {course.dataVerified && !confirmReverify ? (
@@ -643,7 +684,7 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
                   </button>
                   <button
                     onClick={() => void confirmAndVerify()}
-                    disabled={!missing.canVerify || busy !== 'idle'}
+                    disabled={!missing.canVerify || busy !== 'idle' || !activeTee || courseLocked}
                     className="btn-primary text-xs"
                   >
                     Yes, overwrite
@@ -653,10 +694,12 @@ export default function VerifyCoursePage({ params }: { params: Promise<{ courseI
             ) : (
               <button
                 onClick={() => void confirmAndVerify()}
-                disabled={!missing.canVerify || busy !== 'idle'}
+                disabled={!missing.canVerify || busy !== 'idle' || !activeTee || courseLocked}
                 className="btn-primary w-full text-base"
               >
-                ✓ Confirm &amp; mark course as verified
+                {activeTee
+                  ? `✓ Verify ${activeTee.name.toUpperCase()} tees & mark course verified`
+                  : '✓ Choose a tee first'}
               </button>
             )}
 
